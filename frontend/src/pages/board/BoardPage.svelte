@@ -1,0 +1,141 @@
+<script lang="ts">
+  import { onMount, tick, untrack } from 'svelte';
+  import BoardView from '../../widgets/board/BoardView.svelte';
+  import DeleteTaskDialog from '../../features/task-deletion/DeleteTaskDialog.svelte';
+  import ShortcutDialog from '../../shared/ui/ShortcutDialog.svelte';
+  import Sidebar from '../../widgets/sidebar/Sidebar.svelte';
+  import TaskEditor from '../../features/task-editor/TaskEditor.svelte';
+  import { Board } from '../../widgets/board/board.svelte';
+  import { handleShortcut } from '../../shared/keyboard/shortcuts';
+  import type { EditorOptions } from '../../features/task-editor/types';
+  import type { Status, Task, TaskInput } from '../../entities/task/types';
+  import type { TaskApi } from '../../entities/task/api';
+  import type { LeaseState } from '../../entities/task/lease-state.svelte';
+  import { boardShortcuts, shortcutReference } from './shortcuts';
+
+  let {
+    api,
+    leases,
+    initialTasks,
+    onlogout,
+  }: {
+    api: TaskApi;
+    leases: LeaseState;
+    initialTasks: Task[];
+    onlogout: () => void;
+  } = $props();
+  const board = untrack(() => new Board(api, leases, initialTasks));
+  let editor = $state<EditorOptions | null>(null);
+  let deleting = $state<Task | null>(null);
+  let help = $state(false);
+  const modalOpen = $derived(!!editor || !!deleting || help);
+
+  function openEditor(options: EditorOptions = {}) {
+    board.error = '';
+    editor = options;
+  }
+  function askDelete() {
+    board.error = '';
+    deleting = board.current ?? null;
+  }
+  async function focusCard() {
+    await tick();
+    document.getElementById(`task-${board.selected}`)?.focus();
+  }
+  async function navigate(delta: number) {
+    board.navigate(delta);
+    await focusCard();
+  }
+  async function move(status: Status) {
+    await board.move(status);
+    await focusCard();
+  }
+  async function save(input: TaskInput, original?: Task) {
+    if (await board.save(input, original)) {
+      editor = null;
+      await focusCard();
+    }
+  }
+  async function remove() {
+    if (deleting && (await board.remove(deleting))) {
+      deleting = null;
+      await focusCard();
+    }
+  }
+  function keyboard(event: KeyboardEvent) {
+    handleShortcut(
+      event,
+      boardShortcuts({
+        create: () => openEditor(),
+        edit: () => board.current && openEditor({ task: board.current }),
+        subtask: () =>
+          board.current && !board.current.parent_id && openEditor({ parentId: board.current.id }),
+        search: () => document.getElementById('task-search')?.focus(),
+        help: () => (help = true),
+        next: () => navigate(1),
+        previous: () => navigate(-1),
+        todo: () => move('To Do'),
+        inProgress: () => move('In Progress'),
+        complete: () => move('Complete'),
+        claim: () => board.lease('claim'),
+        renew: () => board.lease('renew'),
+        release: () => board.lease('release'),
+        delete: askDelete,
+        refresh: () => board.refresh(),
+        identity: () => document.getElementById('owner')?.focus(),
+        logout: onlogout,
+      }),
+      !modalOpen,
+    );
+  }
+  onMount(() => {
+    const timer = setInterval(() => {
+      if (!board.busy && !modalOpen) board.poll();
+    }, 5000);
+    return () => clearInterval(timer);
+  });
+</script>
+
+<svelte:window onkeydown={keyboard} />
+
+<div class="workspace">
+  <Sidebar
+    count={board.tasks.length}
+    bind:owner={board.leases.owner}
+    onhelp={() => (help = true)}
+    {onlogout}
+  />
+  <BoardView {board} onedit={openEditor} onhelp={() => (help = true)} ondelete={askDelete} />
+</div>
+{#if editor}
+  <TaskEditor
+    options={editor}
+    tasks={board.tasks}
+    busy={board.busy}
+    error={board.error}
+    onsave={save}
+    onclose={() => (editor = null)}
+  />
+{/if}
+{#if deleting}
+  <DeleteTaskDialog
+    task={deleting}
+    busy={board.busy}
+    error={board.error}
+    ondelete={remove}
+    onclose={() => (deleting = null)}
+  />
+{/if}
+{#if help}<ShortcutDialog shortcuts={shortcutReference} onclose={() => (help = false)} />{/if}
+
+<style>
+  .workspace {
+    display: flex;
+    min-height: 100vh;
+  }
+  @media (max-width: 760px) {
+    .workspace {
+      display: block;
+    }
+  }
+</style>

@@ -1,0 +1,1 @@
+Svelte frontend, FastAPI/FastMCP backend with SQLite using SQLAlchemy and Alembic, keyboard first, agent-first, smooth, dev-friendly, make it happen

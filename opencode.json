@@ -1,0 +1,15 @@
+{
+  "mcp": {
+    "servers": {
+      "punctual": {
+        "type": "remote",
+        "url": "http://argonaut:8000/mcp/",
+        "protocol": "2026-07-28",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {env:PUNCTUAL_API_KEY}"
+        }
+      }
+    }
+  }
+}
