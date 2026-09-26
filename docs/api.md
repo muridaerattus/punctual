@@ -13,7 +13,9 @@ for existing edit, delete, and lease endpoints. Task responses include `board_id
 
 ## Endpoints
 
-All `/api/*` and `/mcp/*` calls require `Authorization: Bearer <PUNCTUAL_API_KEY>`.
+Bearer clients use `Authorization: Bearer <PUNCTUAL_API_KEY>` for `/api/*` and `/mcp/*`.
+Configured browser OIDC sessions also authorize the HTTP API; configured
+[MCP OAuth](mcp.md#oauth-sign-in) access tokens authorize MCP only.
 The API key identifies the trusted group, not individual people. GUI credentials
 and owned lease tokens are stored in per-tab session storage. Claim-owner and
 assignee names are coordination labels.

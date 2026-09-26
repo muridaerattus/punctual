@@ -12,9 +12,10 @@ def result(call, *args, **kwargs):
         return {"ok": False, "error": {"code": exc.code, "message": exc.message}}
 
 
-def create_mcp(store: TaskService):
+def create_mcp(store: TaskService, auth=None):
     mcp = FastMCP(
         "Punctual",
+        auth=auth,
         instructions=(
             "List boards to choose a board_id; task listing and creation default to board 1. "
             "Resolve ticket keys with get_task_by_key, then use numeric task IDs for mutations. "

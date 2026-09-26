@@ -9,6 +9,7 @@ from .api.errors import install_error_handlers
 from .api.oidc import BrowserAuth
 from .api.tasks import task_router
 from .config import Settings
+from .mcp.auth import MCPAuth
 from .mcp.server import create_mcp
 from .tasks.service import TaskService
 
@@ -24,7 +25,8 @@ def create_app(db_path: str | None = None, api_key: str | None = None):
         raise RuntimeError("Set PUNCTUAL_API_KEY before starting Punctual")
 
     tasks = TaskService(settings.db)
-    mcp = create_mcp(tasks)
+    mcp_auth = MCPAuth(settings) if settings.mcp_issuer else None
+    mcp = create_mcp(tasks, auth=mcp_auth)
     mcp_app = mcp.http_app(
         path="/",
         stateless_http=True,
@@ -47,7 +49,9 @@ def create_app(db_path: str | None = None, api_key: str | None = None):
     app.state.mcp = mcp
     browser = BrowserAuth(settings)
     app.state.browser_auth = browser
-    install_authentication(app, settings.api_key, browser)
+    install_authentication(app, settings.api_key, browser, mcp_oauth=bool(mcp_auth))
+    if mcp_auth:
+        app.router.routes.extend(mcp_auth.get_well_known_routes())
     app.include_router(browser.router())
     install_error_handlers(app)
 

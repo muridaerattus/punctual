@@ -6,7 +6,9 @@ from fastapi.responses import JSONResponse
 from .oidc import PUBLIC_AUTH_PATHS, BrowserAuth
 
 
-def install_authentication(app: FastAPI, key: str, browser: BrowserAuth):
+def install_authentication(
+    app: FastAPI, key: str, browser: BrowserAuth, *, mcp_oauth=False
+):
     @app.middleware("http")
     async def authenticate(request, call_next):
         path = request.url.path
@@ -17,6 +19,8 @@ def install_authentication(app: FastAPI, key: str, browser: BrowserAuth):
             "/openapi.json",
             "/redoc",
         ) or path.startswith(("/api/", "/mcp/"))
+        if mcp_oauth and (path == "/mcp" or path.startswith("/mcp/")):
+            protected = False  # FastMCP validates bearer credentials and emits OAuth challenges.
         if protected and path not in PUBLIC_AUTH_PATHS:
             supplied = request.headers.get("authorization", "")
             bearer = secrets.compare_digest(supplied.encode(), f"Bearer {key}".encode())
