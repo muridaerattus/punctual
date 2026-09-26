@@ -43,7 +43,7 @@
     {#if !tasks.length}
       <div class="empty">
         <span>＋</span>
-        <p>A little room to make progress.</p>
+        <p>No tasks to display.</p>
       </div>
     {/if}
     <button class="add-task" onclick={() => oncreate(status)}>+ Add task</button>

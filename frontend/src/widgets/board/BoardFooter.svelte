@@ -3,7 +3,6 @@
 </script>
 
 <footer>
-  <span><span class="accent">●</span> One fewer dimension.</span>
   <span>
     <kbd>J</kbd> <kbd>K</kbd> navigate <span class="divider">/</span>
     <kbd>Enter</kbd> open <span class="divider">/</span>
@@ -14,7 +13,7 @@
 <style>
   footer {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 10px;
     padding: 23px 0;
     font-size: 10px;
@@ -22,10 +21,6 @@
   }
   kbd {
     font-size: 9px;
-  }
-  .accent {
-    font-size: 8px;
-    margin-right: 7px;
   }
   .divider {
     color: #455641;

@@ -15,9 +15,7 @@
 
 <main class="login">
   <Brand />
-  <p class="eyebrow">LESS PROCESS. MORE PROGRESS.</p>
-  <h1>Small board.<br />Clear direction.</h1>
-  <p class="muted">A shared workspace for humans and agents.</p>
+  <h1>Sign in</h1>
   <form
     onsubmit={(event) => {
       event.preventDefault();
@@ -46,12 +44,9 @@
     margin: 10vh auto;
     padding: 24px;
   }
-  .eyebrow {
-    margin-top: 60px;
-  }
   h1 {
     font-size: 44px;
-    margin: 16px 0;
+    margin: 60px 0 16px;
   }
   form {
     margin: 30px 0 20px;

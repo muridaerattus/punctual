@@ -16,8 +16,7 @@
 <aside class="sidebar">
   <Brand />
   <div class="workspace-label">
-    <span class="avatar">AR</span>
-    <div>Workspace<small>Humans + agents</small></div>
+    <div>Workspace</div>
     <span class="online"></span>
   </div>
   <p class="eyebrow">WORKSPACE</p>
@@ -27,7 +26,7 @@
     <input id="owner" bind:value={owner} maxlength="100" placeholder="human" />
     <button class="quiet" onclick={onhelp}>Keyboard shortcuts <kbd>?</kbd></button>
     <button class="quiet" onclick={onlogout}>Sign out <kbd>⇧ L</kbd></button>
-    <div class="version">PUNCTUAL <span>0.1 / LESS IS MORE</span></div>
+    <div class="version">PUNCTUAL <span>0.1</span></div>
   </div>
 </aside>
 
@@ -47,23 +46,6 @@
     gap: 10px;
     margin: 40px 0 35px;
     font-size: 12px;
-  }
-  .avatar {
-    width: 32px;
-    height: 32px;
-    display: grid;
-    place-items: center;
-    border: 1px solid #47503d;
-    background: #2d3427;
-    border-radius: 6px;
-    color: #c4d7ae;
-    font-size: 11px;
-  }
-  small {
-    display: block;
-    color: #738377;
-    font-size: 10px;
-    margin-top: 3px;
   }
   .online {
     width: 6px;

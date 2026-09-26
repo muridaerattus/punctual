@@ -33,9 +33,7 @@
   </header>
   <section class="board-heading">
     <div>
-      <p class="eyebrow">MAKE ROOM FOR THE WORK</p>
-      <h1>The board<span class="accent">.</span></h1>
-      <p class="muted">Everything that matters. Nothing in the way.</p>
+      <h1>Board</h1>
     </div>
     <button class="primary" onclick={() => onedit({})}>+ New task <kbd>N</kbd></button>
   </section>
@@ -122,13 +120,6 @@
     align-items: center;
     padding: 42px 0 30px;
   }
-  .eyebrow {
-    margin-bottom: 10px;
-  }
-  .muted {
-    margin-top: 9px;
-    font-size: 12px;
-  }
   .notice {
     font-size: 10px;
     color: #809082;
@@ -173,12 +164,6 @@
     }
     h1 {
       font-size: 32px;
-    }
-    .eyebrow {
-      font-size: 8px;
-    }
-    .muted {
-      font-size: 10px;
     }
     .columns {
       grid-template-columns: 1fr;

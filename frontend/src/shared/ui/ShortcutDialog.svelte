@@ -11,7 +11,7 @@
 
 <Modal label="Keyboard shortcuts" {onclose}>
   <div class="dialog-heading">
-    <h2>Stay on the keyboard.</h2>
+    <h2>Keyboard shortcuts</h2>
     <button onclick={onclose} aria-label="Close shortcuts">✕</button>
   </div>
   <p class="muted">Shortcuts work outside text fields. Tab reaches every control.</p>

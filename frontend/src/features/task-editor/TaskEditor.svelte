@@ -50,11 +50,9 @@
   <form bind:this={form} onsubmit={save}>
     <div class="dialog-heading">
       <div>
-        <p class="eyebrow">
-          {original
-            ? `PUN-${original.id} / REVISION ${original.revision}`
-            : 'A LITTLE FORWARD MOTION'}
-        </p>
+        {#if original}
+          <p class="eyebrow">PUN-{original.id} / REVISION {original.revision}</p>
+        {/if}
         <h2>{original ? 'Edit task' : parent ? 'New subtask' : 'New task'}</h2>
       </div>
       <button type="button" class="quiet" onclick={onclose} aria-label="Close editor"
@@ -67,7 +65,7 @@
         bind:value={title}
         required
         maxlength="300"
-        placeholder="What needs to happen?"
+        placeholder="Task title"
       /></label
     >
     <label
@@ -75,7 +73,7 @@
         bind:value={description}
         maxlength="50000"
         rows="6"
-        placeholder="Add context for your future self or an agent…"></textarea></label
+        placeholder="Task details"></textarea></label
     >
     <div class="form-row">
       <label
