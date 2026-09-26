@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from .api.auth import install_authentication
 from .api.boards import board_router
 from .api.errors import install_error_handlers
+from .api.oidc import BrowserAuth
 from .api.tasks import task_router
 from .config import Settings
 from .mcp.server import create_mcp
@@ -44,7 +45,10 @@ def create_app(db_path: str | None = None, api_key: str | None = None):
     app = FastAPI(title="Punctual", lifespan=lifespan)
     app.state.tasks = tasks
     app.state.mcp = mcp
-    install_authentication(app, settings.api_key)
+    browser = BrowserAuth(settings)
+    app.state.browser_auth = browser
+    install_authentication(app, settings.api_key, browser)
+    app.include_router(browser.router())
     install_error_handlers(app)
 
     @app.get("/health")

@@ -15,13 +15,13 @@
     () => session.key,
     () => {
       session.authenticated = false;
-      error = 'Your session expired. Enter a valid API key.';
+      error = 'Your session expired. Please sign in again.';
     },
   );
   const api = new TaskApi(client);
   const boardApi = new BoardApi(client);
   let initialTasks = $state<Task[]>([]);
-  let busy = $state(false);
+  let busy = $state(true);
   let error = $state('');
 
   async function login() {
@@ -38,20 +38,38 @@
     }
   }
 
-  function logout() {
-    session.clear();
-    leases.clear();
-    initialTasks = [];
-    error = '';
+  async function logout() {
+    try {
+      await session.logout();
+      leases.clear();
+      initialTasks = [];
+      error = '';
+    } catch (cause) {
+      window.alert(cause instanceof Error ? cause.message : 'Unable to sign out');
+    }
   }
 
   onMount(() => {
-    if (session.key) login();
+    void (async () => {
+      try {
+        const authenticated = await session.initialize();
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('auth_error')) {
+          error = 'Sign-in failed. Check your team membership and try again.';
+          window.history.replaceState(null, '', '/');
+        }
+        busy = false;
+        if (authenticated) await login();
+      } catch {
+        busy = false;
+        error = 'Unable to reach the server. Reload to try again.';
+      }
+    })();
   });
 </script>
 
 {#if session.authenticated}
   <BoardPage {api} {boardApi} {leases} {initialTasks} onlogout={logout} />
 {:else}
-  <Login bind:apiKey={session.key} {busy} {error} onlogin={login} />
+  <Login bind:apiKey={session.key} oidc={session.oidc} {busy} {error} onlogin={login} />
 {/if}

@@ -16,8 +16,10 @@ export class HttpClient {
   async request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
     const response = await fetch('/api' + path, {
       method,
+      credentials: 'same-origin',
       headers: {
-        Authorization: `Bearer ${this.getKey()}`,
+        ...(this.getKey() ? { Authorization: `Bearer ${this.getKey()}` } : {}),
+        'X-Punctual-CSRF': '1',
         'Content-Type': 'application/json',
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),

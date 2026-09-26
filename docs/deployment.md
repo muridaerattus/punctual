@@ -13,6 +13,67 @@
 | `PUNCTUAL_ALLOWED_ORIGINS` | Same-origin / loopback | Comma-separated additional permitted MCP browser origins |
 | `PUNCTUAL_MCP_HOST` | Unset (loopback check) | Deployment diagnostic Host header; saved by `--mcp-host` |
 
+## Browser OIDC sign-in
+
+Leave all OIDC settings unset for the existing local, bearer-key sign-in mode.
+For a hosted team workspace, configure these server-only variables together:
+
+| Variable | Example / default |
+| --- | --- |
+| `PUNCTUAL_PUBLIC_URL` | `https://punctual.example.com` (exact HTTPS origin) |
+| `PUNCTUAL_OIDC_ISSUER` | `https://auth.example.com/application/o/punctual/` (use your provider's issuer) |
+| `PUNCTUAL_OIDC_CLIENT_ID` | `punctual` |
+| `PUNCTUAL_OIDC_CLIENT_SECRET` | Confidential client secret, from protected runtime configuration |
+| `PUNCTUAL_OIDC_GROUP` | Required when OIDC is enabled; no default. Example: `Example Team`, an exact entry in the signed ID token's `groups` array |
+| `PUNCTUAL_SESSION_SECONDS` | `900`; 60–3600, capped by the ID token's expiry |
+
+Keep `PUNCTUAL_API_KEY` and existing allowed MCP hosts: API/MCP/CLI agents continue
+using the same bearer key. MCP is bearer-only even when a browser cookie is present.
+The hosted frontend offers **Sign in with SSO**, clears any old browser-stored
+API key, and never receives the client secret, ID token, access token or bearer key.
+Team members share every board; forwarded identity headers grant no access.
+
+Register exactly `https://punctual.example.com/api/auth/callback` (or your
+public origin plus `/api/auth/callback`) with the provider. Use a confidential
+authorization-code client, RS256 signing and `openid profile email` scopes; include
+groups in the ID token. Require team membership and S256 PKCE at the provider too.
+Discovery must report the configured issuer exactly and HTTPS endpoints including
+an end-session endpoint. Authlib handles code exchange/client authentication/PKCE;
+PyJWT validates the RSA signature, issuer, audience, expiry and issued-at time.
+Punctual additionally checks nonce, authorized party and group membership.
+State is bound to a five-minute, single-use server-side transaction and secure
+HTTP-only cookie. Callback destinations are fixed, not supplied by callers.
+
+Browser sessions use random opaque `__Host-` cookies with Secure, HttpOnly,
+SameSite=Lax and Path=/; only their SHA-256 hashes are kept in process memory.
+**Run exactly one backend worker/replica.** Sessions have a fixed deadline, never
+refresh, and expire no later than the ID token. A restart/deploy immediately revokes
+all browser sessions and unfinished logins. No session database or schema migration
+is added; task data, revisions and leases retain their existing persistence.
+Session capacity is bounded (4096 sessions, 1024 pending logins).
+
+Group removal blocks new logins; an existing session lasts only to its deadline
+(at most 15 minutes by default, often shorter with provider token expiry).
+For immediate offboarding, remove membership and restart Punctual to revoke all
+browser sessions. No backchannel logout or individual administrative revocation
+endpoint is implemented. Signing out revokes the local session before navigating
+to the provider's end-session flow; finish that flow to end provider SSO too.
+Other browser sessions remain subject to their own deadlines.
+
+Cookie-authenticated writes and logout require the exact configured `Origin` plus
+`X-Punctual-CSRF: 1`. This non-secret header forces cross-origin preflight; Punctual
+does not enable CORS. Bearer requests remain independent of browser CSRF handling.
+Keep the frontend on the same HTTPS origin as the API. Do not log callback query
+strings or cookies: the Docker command disables Uvicorn access logs; use
+`--no-access-log` for other hosted launchers and redact/disable proxy access logs.
+Do not enable request-body/debug logging around authentication.
+
+Before exposing a new deployment, test anonymous/nonmember denial, member login,
+cookie-authenticated reads/writes, logout/replay denial, and existing bearer MCP.
+Retain the provider rollout hold until application tests pass. Site-specific
+Authentik provisioning, secrets transfer, proxy activation and rollout evidence
+belong in the infrastructure repository.
+
 ## Docker
 
 Requires Docker Engine or Docker Desktop. Run these commands from the repository
