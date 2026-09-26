@@ -30,9 +30,36 @@ deletes require an explicit expected revision; the CLI does not silently fetch a
 new revision or retry a stale write. `--clear-assignee` and `--clear-parent` unset
 those fields. Tokens can also be supplied using `--lease-token`.
 
-CLI listing and creation target the default board; numeric-ID commands work across
-boards. Use the [HTTP API](api.md) or [MCP tools](mcp.md) to create/list in other boards
-and resolve ticket keys.
+## Boards and ticket keys
+
+```sh
+punctual boards list
+punctual boards create 'Engineering' --prefix ENG
+punctual create 'Ship a release' --board ENG
+punctual list --board ENG --status 'To Do'
+punctual list --board 2 --query ENG-1
+punctual --json get ENG-1
+punctual create 'Write release notes' --board ENG --parent-id ENG-1
+punctual update ENG-1 --revision 1 --status 'In Progress'
+```
+
+`list` and `create` accept `--board` with a numeric board ID or exact uppercase
+prefix; omitting it still selects board **1**. Board prefixes are unique, immutable,
+and contain 1–8 uppercase ASCII letters. `boards list` returns IDs, names, and prefixes.
+Use IDs and ticket keys from your own responses in these examples.
+
+Every task command accepts a numeric task ID or a ticket key, including `claim`,
+`renew`, `release`, `force-release`, and `lease-history`. `--parent-id` on `create`
+and `update` also accepts either form. Numeric task IDs are global; the number in
+`ENG-1` is local to that board and need not equal its numeric task ID. Task keys
+resolve across boards without `--board`. Parents must belong to the selected board;
+specifying a parent does not implicitly select its board.
+
+Key-based writes resolve only the numeric ID and still use your explicit revision
+and lease token. Lookup output is suppressed so `--json` produces one result or
+structured error per command. Unknown boards/keys fail without retrying a write.
+For `lease-history` after a task is deleted, use its numeric ID because ticket-key
+lookup requires an existing task.
 
 See [lease recovery](api.md#recovering-a-lost-claim-response-or-token) for recovering
 lost claims, and [connection diagnostics](mcp.md#connection-diagnostics) for `punctual doctor`.
