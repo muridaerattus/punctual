@@ -1,12 +1,23 @@
 <script lang="ts">
   import Brand from '../../shared/ui/Brand.svelte';
+  import type { BoardInfo } from '../../entities/task/types';
   let {
     count,
+    boards,
+    boardId,
+    busy,
+    onselect,
+    oncreate,
     owner = $bindable(''),
     onhelp,
     onlogout,
   }: {
     count: number;
+    boards: BoardInfo[];
+    boardId: number;
+    busy: boolean;
+    onselect: (id: number) => void;
+    oncreate: () => void;
     owner?: string;
     onhelp: () => void;
     onlogout: () => void;
@@ -21,6 +32,18 @@
   </div>
   <p class="eyebrow">WORKSPACE</p>
   <div class="nav-active"><span>▦</span> Board <span class="count">{count}</span></div>
+  <div class="board-picker">
+    <label for="board-select">Board</label>
+    <select
+      id="board-select"
+      value={boardId}
+      disabled={busy}
+      onchange={(event) => onselect(Number(event.currentTarget.value))}
+    >
+      {#each boards as board}<option value={board.id}>{board.name} ({board.prefix})</option>{/each}
+    </select>
+    <button class="quiet" disabled={busy} onclick={oncreate}>+ New board</button>
+  </div>
   <div class="sidebar-bottom">
     <label for="owner">Your claim identity <kbd>O</kbd></label>
     <input id="owner" bind:value={owner} maxlength="100" placeholder="human" />
@@ -31,6 +54,10 @@
 </aside>
 
 <style>
+  .board-picker {
+    margin-top: 16px;
+    min-width: 0;
+  }
   .sidebar {
     width: 230px;
     flex-shrink: 0;

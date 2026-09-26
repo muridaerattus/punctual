@@ -17,7 +17,7 @@
 </script>
 
 <Modal label="Delete task" {onclose}>
-  <h2>Delete PUN-{task.id}?</h2>
+  <h2>Delete {task.key}?</h2>
   <p>This permanently deletes “{task.title}”.</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <div class="dialog-actions">

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from .api.auth import install_authentication
+from .api.boards import board_router
 from .api.errors import install_error_handlers
 from .api.tasks import task_router
 from .config import Settings
@@ -51,6 +52,7 @@ def create_app(db_path: str | None = None, api_key: str | None = None):
         return {"status": "ok"}
 
     app.include_router(task_router(tasks))
+    app.include_router(board_router(tasks))
     app.mount("/mcp", mcp_app)
     if settings.static.is_dir():
         app.mount(

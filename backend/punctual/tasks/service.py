@@ -1,13 +1,14 @@
+import re
 import time
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, func, or_, select
 from sqlalchemy.orm import Session
 
-from ..db.models import LeaseRelease, Task
+from ..db.models import Board, LeaseRelease, Task
 from ..db.session import Database
 from . import leases
 from .errors import Conflict
-from .schemas import ForceReleaseInput, TaskInput, TaskPatch
+from .schemas import BoardInput, ForceReleaseInput, TaskInput, TaskPatch
 
 
 def public(task: Task):
@@ -19,6 +20,10 @@ def public(task: Task):
     if not leases.active(task):
         result["lease_owner"] = result["lease_expires_at"] = None
         result["lease_id"] = None
+    result["key"] = f"{task.board.prefix}-{task.number}"
+    result["parent_key"] = (
+        f"{task.board.prefix}-{task.parent.number}" if task.parent else None
+    )
     return result
 
 
@@ -28,6 +33,47 @@ class TaskService:
     def __init__(self, path: str):
         self.path = path
         self.database = Database(path)
+
+    @staticmethod
+    def board(session: Session, board_id: int) -> Board:
+        board = session.get(Board, board_id)
+        if board is None:
+            raise Conflict("not_found", "Board not found", 404)
+        return board
+
+    def list_boards(self):
+        with self.database.session() as session:
+            return [
+                {"id": b.id, "name": b.name, "prefix": b.prefix}
+                for b in session.scalars(select(Board).order_by(Board.id))
+            ]
+
+    def create_board(self, data: BoardInput):
+        with self.database.session(write=True) as session:
+            if session.scalar(select(Board.id).where(Board.prefix == data.prefix)):
+                raise Conflict("prefix_conflict", "Board prefix already exists")
+            board = Board(name=data.name.strip(), prefix=data.prefix)
+            session.add(board)
+            session.flush()
+            return {"id": board.id, "name": board.name, "prefix": board.prefix}
+
+    def get_by_key(self, key: str):
+        if not re.fullmatch(r"[A-Z]{1,8}-[1-9][0-9]*", key):
+            raise Conflict("invalid_key", "Expected a ticket key such as PUN-123", 422)
+        prefix, number = key.split("-")
+        with self.database.session() as session:
+            task = (
+                session.scalar(
+                    select(Task)
+                    .join(Board)
+                    .where(Board.prefix == prefix, Task.number == int(number))
+                )
+                if len(number) <= 19 and int(number) <= 9223372036854775807
+                else None
+            )
+            if task is None:
+                raise Conflict("not_found", "Task not found", 404)
+            return public(task)
 
     @staticmethod
     def task(session: Session, task_id: int) -> Task:
@@ -44,11 +90,19 @@ class TaskService:
         )
 
     def validate_parent(
-        self, session: Session, parent_id: int | None, task_id: int | None = None
+        self,
+        session: Session,
+        parent_id: int | None,
+        board_id: int,
+        task_id: int | None = None,
     ):
         if parent_id is None:
             return
         parent = self.task(session, parent_id)
+        if parent.board_id != board_id:
+            raise Conflict(
+                "invalid_parent", "Parent must belong to the same board", 422
+            )
         if parent_id == task_id or parent.parent_id is not None:
             raise Conflict("invalid_parent", "Subtasks support one level only", 422)
         if task_id and self.has_children(session, task_id):
@@ -60,8 +114,10 @@ class TaskService:
         with self.database.session() as session:
             return public(self.task(session, task_id))
 
-    def list(self, status=None, assignee=None, query=None):
-        statement = select(Task).order_by(Task.id)
+    def list(self, status=None, assignee=None, query=None, board_id=1):
+        statement = (
+            select(Task).join(Board).where(Task.board_id == board_id).order_by(Task.id)
+        )
         if status is not None:
             statement = statement.where(Task.status == status)
         if assignee is not None:
@@ -71,17 +127,25 @@ class TaskService:
                 or_(
                     func.instr(func.lower(Task.title), func.lower(query)) > 0,
                     func.instr(func.lower(Task.description), func.lower(query)) > 0,
+                    func.lower(Board.prefix + "-" + Task.number.cast(String))
+                    == query.lower(),
                 )
             )
         with self.database.session() as session:
+            self.board(session, board_id)
             return [public(task) for task in session.scalars(statement)]
 
     def create(self, data: TaskInput):
         with self.database.session(write=True) as session:
-            self.validate_parent(session, data.parent_id)
+            board = self.board(session, data.board_id)
+            self.validate_parent(session, data.parent_id, board.id)
             task = Task(
-                **data.model_dump(), created_at=time.time(), updated_at=time.time()
+                **data.model_dump(),
+                number=board.next_number,
+                created_at=time.time(),
+                updated_at=time.time(),
             )
+            board.next_number += 1
             session.add(task)
             session.flush()
             return public(task)
@@ -97,7 +161,9 @@ class TaskService:
                 if field in changes and changes[field] is None:
                     raise Conflict("invalid_field", f"{field} cannot be null", 422)
             if "parent_id" in changes:
-                self.validate_parent(session, changes["parent_id"], task_id)
+                self.validate_parent(
+                    session, changes["parent_id"], task.board_id, task_id
+                )
             for field, value in changes.items():
                 setattr(task, field, value)
             task.revision += 1

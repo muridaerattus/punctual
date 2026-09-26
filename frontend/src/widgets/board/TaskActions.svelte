@@ -20,7 +20,7 @@
 </script>
 
 <section class="actionbar" aria-label="Selected task actions">
-  <span class="selected-label">PUN-{task.id}</span>
+  <span class="selected-label">{task.key}</span>
   <button onclick={onedit}>Edit <kbd>E</kbd></button>
   <button disabled={!!task.parent_id} onclick={onsubtask}>Subtask <kbd>S</kbd></button>
   <label

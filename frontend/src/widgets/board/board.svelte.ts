@@ -6,6 +6,7 @@ import {
   type Status,
   type Task,
   type TaskInput,
+  type BoardInfo,
 } from '../../entities/task/types';
 
 export class Board {
@@ -18,6 +19,9 @@ export class Board {
     this.selected = initialTasks[0]?.id ?? null;
   }
   tasks = $state<Task[]>([]);
+  boards = $state<BoardInfo[]>([]);
+  boardId = $state(1);
+  boardName = $derived(this.boards.find((board) => board.id === this.boardId)?.name ?? 'Default');
   search = $state('');
   selected = $state<number | null>(null);
   busy = $state(false);
@@ -25,7 +29,7 @@ export class Board {
   notice = $state('');
   filtered = $derived(
     this.tasks.filter((task) =>
-      `${task.title} ${task.description} ${task.assignee || ''} #${task.id}`
+      `${task.title} ${task.description} ${task.assignee || ''} ${task.key}`
         .toLowerCase()
         .includes(this.search.toLowerCase()),
     ),
@@ -62,13 +66,45 @@ export class Board {
   }
 
   private async load() {
-    this.tasks = await this.api.list();
+    const boardId = this.boardId;
+    const [tasks, boards] = await Promise.all([this.api.list(boardId), this.api.boards()]);
+    if (boardId !== this.boardId) return;
+    this.tasks = tasks;
+    this.boards = boards;
     if (!this.tasks.some((task) => task.id === this.selected))
       this.selected = this.tasks[0]?.id ?? null;
   }
 
   refresh() {
     return this.run(() => this.load());
+  }
+
+  loadBoards() {
+    return this.run(async () => {
+      this.boards = await this.api.boards();
+    });
+  }
+
+  selectBoard(id: number) {
+    return this.run(async () => {
+      const tasks = await this.api.list(id);
+      this.boardId = id;
+      this.tasks = tasks;
+      this.selected = tasks[0]?.id ?? null;
+      this.search = '';
+    });
+  }
+
+  createBoard(name: string, prefix: string) {
+    return this.run(async () => {
+      const board = await this.api.createBoard(name, prefix);
+      this.boards = [...this.boards, board];
+      this.boardId = board.id;
+      this.tasks = [];
+      this.selected = null;
+      this.search = '';
+      return board;
+    });
   }
 
   async poll() {
@@ -87,7 +123,7 @@ export class Board {
             revision: original.revision,
             lease_token: this.leases.tokens[original.id],
           })
-        : await this.api.create(input);
+        : await this.api.create(input, this.boardId);
       await this.load();
       this.selected = task.id;
       this.notice = 'Task saved';

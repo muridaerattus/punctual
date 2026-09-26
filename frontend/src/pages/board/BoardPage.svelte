@@ -5,6 +5,7 @@
   import ShortcutDialog from '../../shared/ui/ShortcutDialog.svelte';
   import Sidebar from '../../widgets/sidebar/Sidebar.svelte';
   import TaskEditor from '../../features/task-editor/TaskEditor.svelte';
+  import BoardCreator from '../../features/board-creation/BoardCreator.svelte';
   import { Board } from '../../widgets/board/board.svelte';
   import { handleShortcut } from '../../shared/keyboard/shortcuts';
   import type { EditorOptions } from '../../features/task-editor/types';
@@ -28,7 +29,8 @@
   let editor = $state<EditorOptions | null>(null);
   let deleting = $state<Task | null>(null);
   let help = $state(false);
-  const modalOpen = $derived(!!editor || !!deleting || help);
+  let creatingBoard = $state(false);
+  const modalOpen = $derived(!!editor || !!deleting || help || creatingBoard);
 
   function openEditor(options: EditorOptions = {}) {
     board.error = '';
@@ -89,6 +91,7 @@
     );
   }
   onMount(() => {
+    board.loadBoards();
     const timer = setInterval(() => {
       if (!board.busy && !modalOpen) board.poll();
     }, 5000);
@@ -101,12 +104,30 @@
 <div class="workspace">
   <Sidebar
     count={board.tasks.length}
+    boards={board.boards}
+    boardId={board.boardId}
+    busy={board.busy || modalOpen}
+    onselect={(id) => board.selectBoard(id)}
+    oncreate={() => {
+      board.error = '';
+      creatingBoard = true;
+    }}
     bind:owner={board.leases.owner}
     onhelp={() => (help = true)}
     {onlogout}
   />
   <BoardView {board} onedit={openEditor} onhelp={() => (help = true)} ondelete={askDelete} />
 </div>
+{#if creatingBoard}
+  <BoardCreator
+    busy={board.busy}
+    error={board.error}
+    oncreate={async (name, prefix) => {
+      if (await board.createBoard(name, prefix)) creatingBoard = false;
+    }}
+    onclose={() => (creatingBoard = false)}
+  />
+{/if}
 {#if editor}
   <TaskEditor
     options={editor}

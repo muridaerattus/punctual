@@ -30,6 +30,9 @@ def test_stateless_mcp_and_shared_locking(client, auth):
     assert "result" in rpc("server/discover", {})
     names = {tool["name"] for tool in rpc("tools/list", {})["result"]["tools"]}
     assert names == {
+        "list_boards",
+        "create_board",
+        "get_task_by_key",
         "list_tasks",
         "get_task",
         "create_task",
@@ -40,6 +43,23 @@ def test_stateless_mcp_and_shared_locking(client, auth):
         "release_lease",
         "force_release_lease",
     }
+
+    def call(name, arguments):
+        return rpc("tools/call", {"name": name, "arguments": arguments})["result"][
+            "structuredContent"
+        ]
+
+    board = call("create_board", {"board": {"name": "Engineering", "prefix": "ENG"}})[
+        "data"
+    ]
+    assert board in call("list_boards", {})["data"]
+    other = call(
+        "create_task", {"task": {"title": "Other board", "board_id": board["id"]}}
+    )["data"]
+    assert other["key"] == "ENG-1"
+    assert call("list_tasks", {})["data"] == []
+    assert call("list_tasks", {"board_id": board["id"]})["data"] == [other]
+    assert call("get_task_by_key", {"key": "ENG-1"})["data"] == other
     created = rpc(
         "tools/call",
         {

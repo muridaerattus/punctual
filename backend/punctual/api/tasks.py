@@ -20,12 +20,17 @@ def task_router(store: TaskService):
         status: Status | None = None,
         assignee: str | None = None,
         query: str | None = None,
+        board_id: int = 1,
     ):
-        return store.list(status, assignee, query)
+        return store.list(status, assignee, query, board_id)
 
     @router.post("", status_code=201)
     def create(task: TaskInput):
         return store.create(task)
+
+    @router.get("/by-key/{key}")
+    def get_by_key(key: str):
+        return store.get_by_key(key)
 
     @router.get("/{task_id}")
     def get(task_id: int):

@@ -3,7 +3,7 @@
 _It's one fewer dimension!_
 
 Lightweight kanban for humans and agents. Svelte frontend, FastAPI/FastMCP backend,
-SQLite storage through SQLAlchemy, Alembic migrations, and an HTTP-based CLI. One board per instance, with tasks and
+SQLite storage through SQLAlchemy, Alembic migrations, and an HTTP-based CLI. Separate boards, with tasks and
 one-level subtasks. MIT licensed.
 
 ## Run locally
@@ -86,6 +86,34 @@ those fields. Tokens can also be supplied using `--lease-token`.
 
 ## HTTP API
 
+### Boards and ticket keys
+
+Each board has a name and a unique, immutable prefix of 1–8 uppercase ASCII letters
+(`^[A-Z]{1,8}$`). Create and select boards in the sidebar. Tasks display stable keys
+such as `ENG-12345`; numbering starts at 1 independently in each board, includes
+subtasks, and never reuses deleted ticket numbers. Prefixes and task boards cannot
+be changed. Parents must belong to the same board; subtasks still support one level.
+
+Existing tasks migrate into board **1**, named **Default**, with prefix **PUN**.
+Their keys remain `PUN-<existing numeric ID>`. Numeric IDs, revisions, relationships,
+and active leases are preserved. Boards share the instance's authentication;
+they organize work rather than define access permissions.
+
+Use `GET /api/boards` and `POST /api/boards` (body: `{"name":"Engineering","prefix":"ENG"}`).
+Pass `board_id` when creating or listing tasks; omission selects default board 1.
+Resolve a key with `GET /api/tasks/by-key/ENG-1`, then use the returned numeric `id`
+for existing edit, delete, and lease endpoints. Task responses include `board_id`,
+`number`, `key`, and `parent_key`. Text search also accepts a complete ticket key.
+MCP provides `list_boards`, `create_board(board)`, and `get_task_by_key(key)`;
+`list_tasks(board_id=...)` and `create_task(task={..., "board_id": ...})` scope work.
+CLI listing and creation continue to target the default board; numeric-ID commands
+work across boards.
+
+Migration `0003` is automatic. Back up before upgrading; downgrade is refused if
+additional boards exist because the old schema cannot represent their keys.
+
+### Endpoints
+
 All `/api/*` and `/mcp/*` calls require `Authorization: Bearer <PUNCTUAL_API_KEY>`.
 The API key identifies the trusted group, not individual people. GUI credentials
 and owned lease tokens are stored in per-tab session storage. Claim-owner and
@@ -93,9 +121,12 @@ assignee names are coordination labels.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/tasks` | List; optional `status`, `assignee`, `query` filters |
+| GET | `/api/boards` | List boards |
+| POST | `/api/boards` | Create with `name`, unique `prefix` |
+| GET | `/api/tasks` | List in `board_id` (default 1); optional `status`, `assignee`, `query` filters |
 | POST | `/api/tasks` | Create |
 | GET | `/api/tasks/{id}` | Read |
+| GET | `/api/tasks/by-key/{key}` | Resolve a ticket key |
 | PATCH | `/api/tasks/{id}` | Partial update with `revision` and optional `lease_token` |
 | DELETE | `/api/tasks/{id}` | JSON body: `revision`, optional `lease_token` |
 | POST | `/api/tasks/{id}/claim` | JSON: `owner`, optional `seconds` |
@@ -190,7 +221,7 @@ bearer header. This implementation targets the current **2026-07-28** specificat
 using FastMCP 4 / MCP SDK 2. Requests are stateless, carry per-request version and
 capability metadata, and do not use a session ID or initialization handshake.
 
-Tools: `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`,
+Tools: `list_boards`, `create_board`, `get_task_by_key`, `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`,
 `claim_task`, `renew_lease`, `release_lease`, `force_release_lease`. Tools share exactly the HTTP service
 and lock checks. Results have `{ "ok": true, "data": … }` or
 `{ "ok": false, "error": { "code": …, "message": … } }`; agents must check `ok`.
@@ -261,7 +292,7 @@ uv run punctual --url http://localhost:8000 --json doctor
 ```
 
 Use the base URL, without `/mcp/`. `doctor` checks health, frontend availability,
-authenticated API access, MCP discovery for `2026-07-28`, and all nine tools.
+authenticated API access, MCP discovery for `2026-07-28`, and all twelve tools.
 It performs no writes and prints neither keys nor task contents. Exit code is
 zero on success and one on failure. Errors distinguish connection failures,
 401 (key mismatch), 404/405 (wrong endpoint), 421 (disallowed host), unsupported

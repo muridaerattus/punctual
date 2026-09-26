@@ -30,8 +30,8 @@
   }}
 >
   <div class="task-meta">
-    <span>PUN-{task.id}</span>
-    {#if task.parent_id}<span>↳ PUN-{task.parent_id}</span>{/if}
+    <span>{task.key}</span>
+    {#if task.parent_key}<span>↳ {task.parent_key}</span>{/if}
     {#if task.lease_owner}<span class="lease">⌑ {task.lease_owner}</span>{/if}
   </div>
   <h3>{task.title}</h3>

@@ -51,7 +51,7 @@
     <div class="dialog-heading">
       <div>
         {#if original}
-          <p class="eyebrow">PUN-{original.id} / REVISION {original.revision}</p>
+          <p class="eyebrow">{original.key} / REVISION {original.revision}</p>
         {/if}
         <h2>{original ? 'Edit task' : parent ? 'New subtask' : 'New task'}</h2>
       </div>
@@ -89,7 +89,7 @@
       <select bind:value={parent}>
         <option value={null}>None — top-level task</option>
         {#each tasks.filter((task) => !task.parent_id && task.id !== original?.id) as task}
-          <option value={task.id}>PUN-{task.id} · {task.title}</option>
+          <option value={task.id}>{task.key} · {task.title}</option>
         {/each}
       </select>
     </label>

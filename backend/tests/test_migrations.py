@@ -17,7 +17,7 @@ def test_migrations_match_models_and_preserve_data(tmp_path):
     lease = store.lease(task["id"], "claim", owner="agent")
     with store.database.engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0002"
+        assert context.get_current_revision() == "0003"
         assert compare_metadata(context, Base.metadata) == []
 
     restarted = TaskService(store.path)
@@ -66,5 +66,52 @@ def test_upgrade_preserves_existing_active_lease(tmp_path):
         assert migrated["lease_owner"] == "agent"
         assert len(migrated["lease_id"]) == 32
         store.lease(1, "release", token="old-token")
+    finally:
+        store.database.engine.dispose()
+
+
+def test_board_migration_preserves_children_leases_and_deleted_high_water(tmp_path):
+    path = tmp_path / "boards-migration.db"
+    engine = create_engine(f"sqlite:///{path}")
+    config = Config()
+    config.set_main_option(
+        "script_location", str(Path(__file__).parents[1] / "punctual/db/migrations")
+    )
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0002")
+        connection.execute(
+            text("""
+            INSERT INTO tasks (id, title, description, status, parent_id, revision,
+                created_at, updated_at, lease_owner, lease_token, lease_expires_at, lease_id)
+            VALUES (5, 'Parent', 'Preserved', 'In Progress', NULL, 7, 1, 2,
+                'agent', 'saved-token', 9999999999, '0123456789abcdef0123456789abcdef'),
+                (9, 'Child', '', 'To Do', 5, 3, 3, 4, NULL, NULL, NULL, NULL),
+                (99, 'Deleted', '', 'Complete', NULL, 1, 1, 1, NULL, NULL, NULL, NULL)
+        """)
+        )
+        connection.execute(text("DELETE FROM tasks WHERE id = 99"))
+    engine.dispose()
+    # Startup uses foreign_keys=ON, unlike a plain Alembic connection.
+    store = TaskService(str(path))
+    try:
+        parent, child = store.get(5), store.get(9)
+        assert (parent["key"], child["key"], child["parent_key"]) == (
+            "PUN-5",
+            "PUN-9",
+            "PUN-5",
+        )
+        assert (
+            parent["revision"],
+            parent["status"],
+            parent["description"],
+            parent["updated_at"],
+        ) == (7, "In Progress", "Preserved", 2)
+        assert parent["lease_id"] == "0123456789abcdef0123456789abcdef"
+        store.lease(5, "release", token="saved-token")
+        task = store.create(TaskInput(title="After migration"))
+        assert (task["id"], task["key"]) == (100, "PUN-100")
+        with store.database.engine.connect() as connection:
+            assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
     finally:
         store.database.engine.dispose()

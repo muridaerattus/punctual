@@ -28,7 +28,7 @@
 
 <main class="board-main">
   <header>
-    <div class="breadcrumb">Workspace <span>/</span> <strong>Board</strong></div>
+    <div class="breadcrumb">Workspace <span>/</span> <strong>{board.boardName}</strong></div>
     <span class="connection"><i></i> Connected · refreshes every 5s</span>
   </header>
   <section class="board-heading">

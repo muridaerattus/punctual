@@ -1,7 +1,7 @@
 from fastmcp import FastMCP
 
 from ..tasks.errors import Conflict
-from ..tasks.schemas import ForceReleaseInput, Status, TaskInput, TaskPatch
+from ..tasks.schemas import BoardInput, ForceReleaseInput, Status, TaskInput, TaskPatch
 from ..tasks.service import TaskService
 
 
@@ -16,6 +16,8 @@ def create_mcp(store: TaskService):
     mcp = FastMCP(
         "Punctual",
         instructions=(
+            "List boards to choose a board_id; task listing and creation default to board 1. "
+            "Resolve ticket keys with get_task_by_key, then use numeric task IDs for mutations. "
             "List tasks, claim one, then update with its revision and lease token. "
             "Renew long-running leases and release when done. "
             "Prefer a random lease_token saved before claiming; retry claim with the same "
@@ -26,13 +28,29 @@ def create_mcp(store: TaskService):
     )
 
     @mcp.tool
+    def list_boards():
+        """List boards and their immutable ticket prefixes."""
+        return result(store.list_boards)
+
+    @mcp.tool
+    def create_board(board: BoardInput):
+        """Create a board with a unique prefix of 1–8 uppercase ASCII letters."""
+        return result(store.create_board, board)
+
+    @mcp.tool
+    def get_task_by_key(key: str):
+        """Resolve a stable ticket key to its numeric ID and current revision."""
+        return result(store.get_by_key, key)
+
+    @mcp.tool
     def list_tasks(
         status: Status | None = None,
         assignee: str | None = None,
         query: str | None = None,
+        board_id: int = 1,
     ):
-        """List tasks, optionally filtered by status, assignee or text."""
-        return result(store.list, status, assignee, query)
+        """List tasks in a board (default 1), filtered by status, assignee or text/key."""
+        return result(store.list, status, assignee, query, board_id)
 
     @mcp.tool
     def get_task(task_id: int):

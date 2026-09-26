@@ -5,6 +5,13 @@ from pydantic import BaseModel, ConfigDict, Field
 Status = Literal["To Do", "In Progress", "Complete"]
 
 
+class BoardInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=100, pattern=r"\S")
+    prefix: str = Field(pattern=r"^[A-Z]{1,8}$", max_length=8)
+
+
 class TaskInput(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -13,6 +20,7 @@ class TaskInput(BaseModel):
     status: Status = "To Do"
     assignee: str | None = Field(default=None, max_length=100)
     parent_id: int | None = Field(default=None, gt=0)
+    board_id: int = Field(default=1, gt=0)
 
 
 class TaskPatch(BaseModel):
