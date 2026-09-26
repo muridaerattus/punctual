@@ -1,15 +1,9 @@
 import type { HttpClient } from '../../shared/api/client';
-import type { BoardInfo, LeaseAction, LeaseResult, Task, TaskChanges, TaskInput } from './types';
+import type { LeaseAction, LeaseResult, Task, TaskChanges, TaskInput } from './types';
 
 export class TaskApi {
   constructor(private client: HttpClient) {}
 
-  boards() {
-    return this.client.request<BoardInfo[]>('/boards');
-  }
-  createBoard(name: string, prefix: string) {
-    return this.client.request<BoardInfo>('/boards', 'POST', { name, prefix });
-  }
   list(boardId = 1) {
     return this.client.request<Task[]>(`/tasks?board_id=${boardId}`);
   }

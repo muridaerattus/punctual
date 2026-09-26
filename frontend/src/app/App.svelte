@@ -3,6 +3,7 @@
   import Login from '../features/authentication/Login.svelte';
   import { Session } from '../features/authentication/session.svelte';
   import { TaskApi } from '../entities/task/api';
+  import { BoardApi } from '../entities/board/api';
   import { LeaseState } from '../entities/task/lease-state.svelte';
   import type { Task } from '../entities/task/types';
   import BoardPage from '../pages/board/BoardPage.svelte';
@@ -10,15 +11,15 @@
 
   const session = new Session();
   const leases = new LeaseState();
-  const api = new TaskApi(
-    new HttpClient(
-      () => session.key,
-      () => {
-        session.authenticated = false;
-        error = 'Your session expired. Enter a valid API key.';
-      },
-    ),
+  const client = new HttpClient(
+    () => session.key,
+    () => {
+      session.authenticated = false;
+      error = 'Your session expired. Enter a valid API key.';
+    },
   );
+  const api = new TaskApi(client);
+  const boardApi = new BoardApi(client);
   let initialTasks = $state<Task[]>([]);
   let busy = $state(false);
   let error = $state('');
@@ -50,7 +51,7 @@
 </script>
 
 {#if session.authenticated}
-  <BoardPage {api} {leases} {initialTasks} onlogout={logout} />
+  <BoardPage {api} {boardApi} {leases} {initialTasks} onlogout={logout} />
 {:else}
   <Login bind:apiKey={session.key} {busy} {error} onlogin={login} />
 {/if}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import Brand from '../../shared/ui/Brand.svelte';
-  import type { BoardInfo } from '../../entities/task/types';
+  import type { BoardInfo } from '../../entities/board/types';
   let {
     count,
     boards,

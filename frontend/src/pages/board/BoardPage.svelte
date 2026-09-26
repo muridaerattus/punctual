@@ -11,21 +11,24 @@
   import type { EditorOptions } from '../../features/task-editor/types';
   import type { Status, Task, TaskInput } from '../../entities/task/types';
   import type { TaskApi } from '../../entities/task/api';
+  import type { BoardApi } from '../../entities/board/api';
   import type { LeaseState } from '../../entities/task/lease-state.svelte';
   import { boardShortcuts, shortcutReference } from './shortcuts';
 
   let {
     api,
+    boardApi,
     leases,
     initialTasks,
     onlogout,
   }: {
     api: TaskApi;
+    boardApi: BoardApi;
     leases: LeaseState;
     initialTasks: Task[];
     onlogout: () => void;
   } = $props();
-  const board = untrack(() => new Board(api, leases, initialTasks));
+  const board = untrack(() => new Board(api, boardApi, leases, initialTasks));
   let editor = $state<EditorOptions | null>(null);
   let deleting = $state<Task | null>(null);
   let help = $state(false);

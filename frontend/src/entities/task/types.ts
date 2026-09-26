@@ -21,9 +21,3 @@ export interface Task {
 export type TaskInput = Pick<Task, 'title' | 'description' | 'status' | 'assignee' | 'parent_id'>;
 export type TaskChanges = Partial<TaskInput> & { revision: number; lease_token?: string };
 export type LeaseResult = Task & { lease_token?: string };
-
-export interface BoardInfo {
-  id: number;
-  name: string;
-  prefix: string;
-}

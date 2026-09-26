@@ -1,3 +1,5 @@
+import type { BoardApi } from '../../entities/board/api';
+import type { BoardInfo } from '../../entities/board/types';
 import type { TaskApi } from '../../entities/task/api';
 import type { LeaseState } from '../../entities/task/lease-state.svelte';
 import {
@@ -6,12 +8,12 @@ import {
   type Status,
   type Task,
   type TaskInput,
-  type BoardInfo,
 } from '../../entities/task/types';
 
 export class Board {
   constructor(
     private api: TaskApi,
+    private boardApi: BoardApi,
     readonly leases: LeaseState,
     initialTasks: Task[],
   ) {
@@ -67,7 +69,7 @@ export class Board {
 
   private async load() {
     const boardId = this.boardId;
-    const [tasks, boards] = await Promise.all([this.api.list(boardId), this.api.boards()]);
+    const [tasks, boards] = await Promise.all([this.api.list(boardId), this.boardApi.list()]);
     if (boardId !== this.boardId) return;
     this.tasks = tasks;
     this.boards = boards;
@@ -81,7 +83,7 @@ export class Board {
 
   loadBoards() {
     return this.run(async () => {
-      this.boards = await this.api.boards();
+      this.boards = await this.boardApi.list();
     });
   }
 
@@ -97,7 +99,7 @@ export class Board {
 
   createBoard(name: string, prefix: string) {
     return this.run(async () => {
-      const board = await this.api.createBoard(name, prefix);
+      const board = await this.boardApi.create(name, prefix);
       this.boards = [...this.boards, board];
       this.boardId = board.id;
       this.tasks = [];

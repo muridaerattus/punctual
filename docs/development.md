@@ -57,7 +57,9 @@ frontend/src/
 │   ├── board-creation/      # Board creation dialog
 │   ├── task-editor/         # Task/subtask editing and local drafts
 │   └── task-deletion/       # Delete confirmation
-├── entities/task/           # Task/board types and API, task card, local lease state
+├── entities/
+│   ├── board/               # Board types and API
+│   └── task/                # Task types and API, task card, local lease state
 ├── shared/
 │   ├── api/                 # Generic authenticated HTTP client
 │   ├── keyboard/            # Shortcut event handling
@@ -65,8 +67,11 @@ frontend/src/
 └── main.ts
 ```
 
-`app/App.svelte` owns authentication and injects the API and lease state into the
-board page. The board has no dependency on login/session state. `BoardPage.svelte`
+`app/App.svelte` owns authentication and injects separate task and board APIs plus
+lease state into the board page. Both APIs use the same shared HTTP client; the
+`entities/board` and `entities/task` slices do not import each other. The board widget
+composes them, using numeric board IDs to scope task requests. The board has no
+dependency on login/session state. `BoardPage.svelte`
 coordinates task dialogs and polling. Shortcut bindings and displayed descriptions
 share `pages/board/shortcuts.ts` so the help reference stays aligned with actions.
 
