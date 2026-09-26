@@ -1,1 +1,39 @@
-Svelte frontend, FastAPI/FastMCP backend with SQLite using SQLAlchemy and Alembic, keyboard first, agent-first, smooth, dev-friendly, make it happen
+# Working on Punctual
+
+Keep Punctual keyboard-first, agent-first, smooth, and dev-friendly.
+
+## Structure and conventions
+
+- `frontend/src/`: Svelte/TypeScript using Feature-Sliced Design (FSD). Dependencies flow down through
+  `app → pages → widgets → features → entities → shared`; keep sibling slices independent.
+  Preserve keyboard navigation, dialog focus handling, and useful accessibility labels.
+- `backend/punctual/`: FastAPI HTTP routes and FastMCP tools share `TaskService`;
+  the CLI calls HTTP. Put domain rules in the service so adapters stay consistent.
+- `backend/punctual/db/`: SQLite via SQLAlchemy and Alembic. Use migrations for schema
+  changes; preserve existing data, stable board ticket keys, revisions, and lease checks.
+- `backend/tests/`: pytest coverage for domain rules, adapters, migrations, and deployment.
+- `docs/`: detailed guides. Keep the root README a quick start and documentation index.
+
+## Development and checks
+
+Setup and live reload: [development guide](docs/development.md).
+Run the checks relevant to your changes:
+
+```sh
+# From backend/
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+
+# From frontend/
+npm run check
+npm run format:check
+npm run build
+```
+
+Use `npm run format` for frontend formatting. Keep documentation and examples in
+sync with behavior; never commit API keys or lease tokens.
+
+When working a tracked task, choose its board, claim it, update using its revision
+and lease token, renew as needed, and release when done. Save a random token before
+claiming. See [MCP workflow](docs/mcp.md) and [lease recovery](docs/api.md#recovering-a-lost-claim-response-or-token).
