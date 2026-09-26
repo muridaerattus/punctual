@@ -18,6 +18,7 @@ uv run uvicorn punctual.app:create_app --factory --reload
 From the repository root:
 
 ```sh
+uv run --locked --project scripts python scripts/check_doc_links.py
 cd backend
 uv run pytest -q
 uv run ruff check .
@@ -26,6 +27,19 @@ cd ../frontend
 npm run check
 npm run format:check
 npm run build
+```
+
+The documentation check scans all Git-tracked `.md` files, checks local files and
+GitHub-style heading anchors (including duplicate headings and explicit HTML
+IDs), and reports failures as `file:line`. It parses Markdown links, images, and
+reference links; fenced/indented code and inline code examples are ignored.
+External URLs are skipped without network requests. Root-relative paths start at
+the repository root; URL-encoded paths/anchors are decoded. Fragments on non-Markdown
+files and raw HTML links are not checked. Add new Markdown files to Git before
+running the check. Run the checker's focused tests from the repository root with:
+
+```sh
+uv run --locked --project scripts python -m unittest discover -s scripts/tests -v
 ```
 
 Tests cover competing claims and edits, persisted leases, expiry/recovery, token

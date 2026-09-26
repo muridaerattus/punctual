@@ -20,6 +20,9 @@ Setup and live reload: [development guide](docs/development.md).
 Run the checks relevant to your changes:
 
 ```sh
+# From the repository root (local Markdown links and anchors)
+uv run --locked --project scripts python scripts/check_doc_links.py
+
 # From backend/
 uv run pytest -q
 uv run ruff check .
