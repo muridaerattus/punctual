@@ -134,7 +134,7 @@ OpenCode V2 example for such a pre-registered client:
         "protocol": "2026-07-28",
         "oauth": {
           "client_id": "tasks-mcp",
-          "scope": "tasks:access",
+          "scope": "tasks:access offline_access",
           "callback_port": 19876,
           "redirect_uri": "http://127.0.0.1:19876/callback"
         }
@@ -149,12 +149,26 @@ provider. Check that the connection becomes connected. No client secret or
 Authorization header is needed. This is an example, not an automatic edit to your
 existing client. The callback must reach the machine running the OpenCode service.
 
-Token lifetime, refresh and revocation are issuer policy. The initial Authentik
-deployment uses five-minute access tokens and code-only grants; sign in again on
-expiry. It does not issue refresh tokens. Removing team membership prevents new
-authorization; already-issued tokens remain usable until expiry. Browser logout
-does not revoke MCP tokens. For immediate shutdown disable the MCP OAuth settings
-and restart (existing API-key access remains available).
+Token lifetime, refresh and revocation are issuer policy. Enable Authentik's
+`refresh_token` grant and built-in `offline_access` scope mapping alongside the
+resource scope; clients must request both scopes. OpenCode refreshes automatically.
+Existing access-only grants need one new sign-in to obtain a refresh token.
+
+The deployed Authentik configuration keeps five-minute access tokens and uses
+30-day refresh tokens with rotation on every use (`refresh_token_threshold` set
+to `seconds=0`). The resource scope mapping caps token expiry at the original
+authentication time plus 30 days, so sliding refresh rotation cannot grant
+indefinite access. After that bound, obtain a fresh identity-provider login and
+MCP grant. No client secret is needed for this public client.
+
+Authentik 2026.8 does not rerun application policies on refresh. Recompute current
+groups in the scope mapping on every issuance, omitting groups for inactive
+accounts. Punctual then rejects refreshed tokens after team removal; disabling
+an account also prevents refresh. Revoke MCP refresh tokens when offboarding.
+Already-issued access tokens remain usable until their five-minute expiry.
+Native refresh revocation and rotation replay rejection are verified; this is
+not a token-family revocation guarantee. For immediate shutdown disable the MCP
+OAuth settings and restart (existing API-key access remains available).
 
 References: [MCP authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization),
 [FastMCP remote OAuth](https://gofastmcp.com/servers/auth/remote-oauth),
