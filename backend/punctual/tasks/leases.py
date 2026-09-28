@@ -9,8 +9,20 @@ def active(task: Task) -> bool:
     return (task.lease_expires_at or 0) > time.time()
 
 
+def token_matches(expected: str | None, supplied: str | None) -> bool:
+    # compare_digest(str, str) raises on non-ASCII input. Treat it as a mismatch,
+    # while still accepting shorter ASCII tokens preserved by legacy migrations.
+    return bool(
+        expected
+        and supplied
+        and expected.isascii()
+        and supplied.isascii()
+        and secrets.compare_digest(expected, supplied)
+    )
+
+
 def guard(task: Task, revision: int, token: str | None):
-    if active(task) and not secrets.compare_digest(task.lease_token or "", token or ""):
+    if active(task) and not token_matches(task.lease_token, token):
         raise Conflict("task_locked", f"Task is claimed by {task.lease_owner}")
     if task.revision != revision:
         raise Conflict(
@@ -40,7 +52,7 @@ def change(task: Task, action: str, owner: str | None, token: str | None, second
         if active(task):
             if (
                 token
-                and secrets.compare_digest(task.lease_token or "", token)
+                and token_matches(task.lease_token, token)
                 and task.lease_owner == owner
             ):
                 # Recover a lost response without extending or changing the lease.
@@ -53,9 +65,7 @@ def change(task: Task, action: str, owner: str | None, token: str | None, second
         task.lease_owner = owner
         task.lease_token = token or secrets.token_urlsafe(32)
         task.lease_id = secrets.token_hex(16)
-    elif not active(task) or not secrets.compare_digest(
-        task.lease_token or "", token or ""
-    ):
+    elif not active(task) or not token_matches(task.lease_token, token):
         raise Conflict("invalid_lease", "Lease expired or token does not match")
 
     task.lease_expires_at = time.time() + seconds

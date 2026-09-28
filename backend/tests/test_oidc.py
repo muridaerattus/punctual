@@ -237,11 +237,13 @@ def test_signature_state_replay_and_exchange_failures(oidc):
     assert client.get("/api/boards").status_code == 401
 
 
-def test_provider_mismatch_expired_flow_and_restart(oidc):
+def test_provider_mismatch_expired_flow_and_restart(oidc, monkeypatch):
     client, provider, app = oidc
     provider["issuer"] = "https://evil.example"
     assert client.get("/api/auth/login").status_code == 503
     provider.pop("issuer")
+    after_backoff = time.monotonic() + 6
+    monkeypatch.setattr("punctual.api.oidc.monotonic", lambda: after_backoff)
     state = start(client, provider)
     for flow in app.state.browser_auth.flows.values():
         flow["expires"] = 1

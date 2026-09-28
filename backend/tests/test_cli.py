@@ -1,3 +1,4 @@
+import io
 import json
 
 import httpx
@@ -5,6 +6,38 @@ import pytest
 from typer.testing import CliRunner
 
 from punctual.cli.app import app
+from punctual.cli.client import Client
+from punctual.tasks.schemas import TaskInput
+
+
+def test_task_list_escapes_terminal_controls(monkeypatch):
+    class Terminal(io.StringIO):
+        def isatty(self):
+            return True
+
+    # A TTY is important: Click may strip ANSI sequences when output is redirected.
+    terminal = Terminal()
+    monkeypatch.setattr("sys.stdout", terminal)
+    task = TaskInput(
+        title="Café 中 \x1b]52;c;dGVzdA==\x07\x1b[2J\x9b2J\u202e",
+        assignee="agent\r\nFORGED\t\b\u2028\u2066",
+    ).model_dump()
+    task.update(id=1, revision=1)
+    client = Client("http://localhost", "test")
+    client.emit([task])
+    output = terminal.getvalue()
+    assert output.count("\n") == 1
+    assert all(char.isprintable() for char in output.rstrip("\n"))
+    assert "Café 中" in output
+    assert r"\x1b]52;c;dGVzdA==\x07\x1b[2J\x9b2J\u202e" in output
+    assert r"agent\r\nFORGED\t\x08\u2028\u2066" in output
+
+    terminal.seek(0)
+    terminal.truncate()
+    client.json_output = True
+    client.emit([task])
+    assert json.loads(terminal.getvalue()) == [task]
+    assert "\x1b" not in terminal.getvalue()
 
 
 @pytest.fixture

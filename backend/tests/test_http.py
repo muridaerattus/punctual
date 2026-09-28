@@ -1,3 +1,6 @@
+import json
+
+
 def test_http_auth_validation_and_conflicts(client, auth):
     for path in ("/api/tasks", "/mcp/", "/openapi.json"):
         assert client.get(path).status_code == 401
@@ -48,3 +51,19 @@ def test_http_auth_validation_and_conflicts(client, auth):
         ).status_code
         == 200
     )
+
+
+def test_validation_errors_handle_invalid_unicode_without_echoing_secrets(client, auth):
+    response = client.patch(
+        "/api/tasks/1",
+        headers={**auth, "Content-Type": "application/json"},
+        content=json.dumps(
+            {"revision": "secret-value", "lease_token": "\ud800", "\ud800": "extra"}
+        ),
+    )
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    # An invalid field name rejects the whole input before field-level validation.
+    assert {error["type"] for error in errors} == {"string_unicode"}
+    assert all(set(error) == {"type", "loc", "msg"} for error in errors)
+    assert "secret-value" not in response.text

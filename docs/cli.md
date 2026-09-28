@@ -30,6 +30,10 @@ deletes require an explicit expected revision; the CLI does not silently fetch a
 new revision or retry a stale write. `--clear-assignee` and `--clear-parent` unset
 those fields. Tokens can also be supplied using `--lease-token`.
 
+Human-readable task lists display non-printable characters as escapes (such as
+`\n` and `\x1b`) so task text cannot control your terminal. JSON output preserves
+the original text through standard JSON escaping.
+
 ## Boards and ticket keys
 
 ```sh

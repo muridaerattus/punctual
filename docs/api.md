@@ -45,7 +45,8 @@ curl http://localhost:8000/api/tasks \
 
 `/openapi.json`, `/docs`, and `/redoc` are authenticated too; fetch them with the
 same bearer header. `/health` is public. Times are Unix seconds. Validation errors
-use HTTP 422; domain errors contain `{ "error": { "code": "…", "message": "…" } }`.
+use HTTP 422 with a `detail` array of `type`, `loc`, and `msg` fields; submitted
+values are omitted. Domain errors contain `{ "error": { "code": "…", "message": "…" } }`.
 
 ## Coordination guarantees
 

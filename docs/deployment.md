@@ -52,6 +52,20 @@ all browser sessions and unfinished logins. No session database or schema migrat
 is added; task data, revisions and leases retain their existing persistence.
 Session capacity is bounded (4096 sessions, 1024 pending logins).
 
+Sign-in starts are limited to 10 per client address and 100 globally in a rolling
+60-second window. Excess attempts receive HTTP 429 with `Retry-After`; rejected
+attempts do not extend the window. These limits also bound the rate-limiter's
+memory and prevent anonymous requests from filling the pending-login pool.
+In-flight starts reserve capacity before contacting the provider, and release it
+on failure or cancellation. Provider discovery is cached for five minutes, with
+one refresh at a time and a five-second retry backoff after failures.
+
+Client addresses come from the ASGI server, not directly from forwarding headers.
+Behind a reverse proxy, configure Uvicorn's `--forwarded-allow-ips` with the actual
+trusted proxy addresses so clients receive separate limits. Restrict direct access
+to the backend; do not trust forwarding headers from arbitrary internet clients.
+Clients sharing one address share its sign-in limit.
+
 Group removal blocks new logins; an existing session lasts only to its deadline
 (at most 15 minutes by default, often shorter with provider token expiry).
 For immediate offboarding, remove membership and restart Punctual to revoke all

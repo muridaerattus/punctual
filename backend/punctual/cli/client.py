@@ -6,6 +6,14 @@ import httpx
 import typer
 
 
+def terminal_text(value: str) -> str:
+    """Render controls visibly, rather than letting task text command a terminal."""
+    return "".join(
+        char if char.isprintable() else char.encode("unicode_escape").decode("ascii")
+        for char in value
+    )
+
+
 @dataclass
 class Client:
     url: str
@@ -72,8 +80,10 @@ class Client:
         elif isinstance(data, list) and all("title" in item for item in data):
             for item in data:
                 typer.echo(
-                    f"#{item['id']}  [{item['status']}] {item['title']}  "
-                    f"@{item['assignee'] or 'unassigned'}  r{item['revision']}"
+                    terminal_text(
+                        f"#{item['id']}  [{item['status']}] {item['title']}  "
+                        f"@{item['assignee'] or 'unassigned'}  r{item['revision']}"
+                    )
                 )
         else:
             typer.echo(json.dumps(data, indent=2))

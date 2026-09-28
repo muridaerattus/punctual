@@ -134,3 +134,86 @@ def test_force_release_auth_validation_and_cli(client, auth, monkeypatch):
     )
     assert released["lease_owner"] is None
     assert cli("lease-history", str(task["id"]))[0]["reason"] == "Lost token"
+
+
+@pytest.mark.parametrize("token", ["é" * 32, "\ud800"])
+@pytest.mark.parametrize("action", ["claim", "renew", "release", "update", "delete"])
+def test_malformed_tokens_are_rejected_by_http_and_mcp(client, auth, token, action):
+    task = client.post("/api/tasks", headers=auth, json={"title": "Protected"}).json()
+    path = f"/api/tasks/{task['id']}"
+    client.post(path + "/claim", headers=auth, json={"owner": "owner"})
+    before = client.get(path, headers=auth).json()
+    body = {"lease_token": token}
+    if action == "claim":
+        body["owner"] = "intruder"
+    if action in ("update", "delete"):
+        body["revision"] = 1
+    if action == "update":
+        body["title"] = "Tampered"
+    method = {"update": "PATCH", "delete": "DELETE"}.get(action, "POST")
+    endpoint = path if action in ("update", "delete") else path + "/" + action
+    expected_code = (
+        "invalid_token"
+        if action == "claim"
+        else "task_locked"
+        if action in ("update", "delete")
+        else "invalid_lease"
+    )
+    response = client.request(
+        method,
+        endpoint,
+        headers={**auth, "Content-Type": "application/json"},
+        content=json.dumps(body),
+    )
+    schema_rejection = action == "update" and token == "\ud800"
+    if schema_rejection:
+        assert response.status_code == 422
+        assert response.json()["detail"][0]["type"] == "string_unicode"
+    else:
+        assert response.status_code == (422 if action == "claim" else 409)
+        assert response.json()["error"]["code"] == expected_code
+    assert client.get(path, headers=auth).json() == before
+
+    tool = {
+        "claim": "claim_task",
+        "renew": "renew_lease",
+        "release": "release_lease",
+        "update": "update_task",
+        "delete": "delete_task",
+    }[action]
+    arguments = {"task_id": task["id"]}
+    arguments.update({"changes": body} if action == "update" else body)
+    response = client.post(
+        "/mcp/",
+        headers={
+            **auth,
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "MCP-Protocol-Version": "2026-07-28",
+            "Mcp-Method": "tools/call",
+            "Mcp-Name": tool,
+        },
+        content=json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": tool,
+                    "arguments": arguments,
+                    "_meta": {
+                        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                        "io.modelcontextprotocol/clientCapabilities": {},
+                    },
+                },
+            }
+        ),
+    )
+    assert response.status_code == 200
+    result = response.json()["result"]
+    if schema_rejection:
+        assert result["isError"] is True
+    else:
+        assert result["structuredContent"]["ok"] is False
+        assert result["structuredContent"]["error"]["code"] == expected_code
+    assert client.get(path, headers=auth).json() == before

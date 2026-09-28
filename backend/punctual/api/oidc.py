@@ -4,9 +4,13 @@ One process only. A restart revokes all sessions and pending authorizations.
 No refresh tokens: group removal takes effect by the fixed session deadline.
 """
 
+import asyncio
 import hashlib
 import secrets
 import time
+from collections import deque
+from math import ceil
+from time import monotonic
 from urllib.parse import urlsplit
 
 import httpx2 as httpx
@@ -20,6 +24,14 @@ from ..config import Settings
 
 SESSION_COOKIE = "__Host-punctual-session"
 FLOW_COOKIE = "__Host-punctual-flow"
+FLOW_SECONDS = 300
+FLOW_LIMIT = 1024
+SESSION_LIMIT = 4096
+LOGIN_WINDOW = 60
+LOGIN_LIMIT = 100
+LOGIN_PEER_LIMIT = 10
+DISCOVERY_SECONDS = 300
+DISCOVERY_RETRY_SECONDS = 5
 PUBLIC_AUTH_PATHS = {
     "/api/auth/session",
     "/api/auth/login",
@@ -37,6 +49,12 @@ class BrowserAuth:
         self.settings = settings
         self.sessions: dict[str, dict] = {}
         self.flows: dict[str, dict] = {}
+        self.pending_logins = 0
+        self.login_attempts: deque[tuple[float, str]] = deque()
+        self._metadata: dict | None = None
+        self._metadata_expires = 0.0
+        self._metadata_retry_at = 0.0
+        self._metadata_lock = asyncio.Lock()
 
     def prune(self):
         now = time.time()
@@ -58,7 +76,41 @@ class BrowserAuth:
             and request.headers.get("x-punctual-csrf") == "1"
         )
 
+    def login_retry_after(self, request: Request) -> int:
+        """Bound admission and limiter memory; use only the server's client address."""
+        now = monotonic()
+        while self.login_attempts and self.login_attempts[0][0] <= now - LOGIN_WINDOW:
+            self.login_attempts.popleft()
+        peer = request.client.host if request.client else ""
+        peer_attempts = [t for t, host in self.login_attempts if host == peer]
+        deadlines = []
+        if len(self.login_attempts) >= LOGIN_LIMIT:
+            deadlines.append(self.login_attempts[0][0] + LOGIN_WINDOW)
+        if len(peer_attempts) >= LOGIN_PEER_LIMIT:
+            deadlines.append(peer_attempts[0] + LOGIN_WINDOW)
+        if deadlines:
+            return max(1, ceil(max(deadlines) - now))
+        self.login_attempts.append((now, peer))
+        return 0
+
     async def metadata(self):
+        # One refresh at a time, including a short backoff after provider failures.
+        async with self._metadata_lock:
+            now = monotonic()
+            if self._metadata is not None and now < self._metadata_expires:
+                return self._metadata
+            if now < self._metadata_retry_at:
+                raise ValueError("Sign-in provider unavailable")
+            try:
+                data = await self._fetch_metadata()
+            except (httpx.HTTPError, ValueError, KeyError, TypeError):
+                self._metadata_retry_at = monotonic() + DISCOVERY_RETRY_SECONDS
+                raise
+            self._metadata = data
+            self._metadata_expires = monotonic() + DISCOVERY_SECONDS
+            return data
+
+    async def _fetch_metadata(self):
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(
                 self.settings.oidc_issuer.rstrip("/")
@@ -153,10 +205,26 @@ class BrowserAuth:
                     {"error": {"message": "OIDC is disabled"}}, status_code=404
                 )
             self.prune()
-            if len(self.flows) >= 1024 or len(self.sessions) >= 4096:
+            retry_after = self.login_retry_after(request)
+            if retry_after:
+                return JSONResponse(
+                    {
+                        "error": {
+                            "message": "Too many sign-in attempts; try again later"
+                        }
+                    },
+                    status_code=429,
+                    headers={"Retry-After": str(retry_after)},
+                )
+            if (
+                len(self.flows) + self.pending_logins >= FLOW_LIMIT
+                or len(self.sessions) >= SESSION_LIMIT
+            ):
                 return JSONResponse(
                     {"error": {"message": "Try signing in later"}}, status_code=503
                 )
+            # Reserve before the first await so concurrent requests cannot overbook.
+            self.pending_logins += 1
             try:
                 metadata = await self.metadata()
                 nonce, verifier, flow = (secrets.token_urlsafe(32) for _ in range(3))
@@ -171,23 +239,25 @@ class BrowserAuth:
                     "state": state,
                     "nonce": nonce,
                     "verifier": verifier,
-                    "expires": time.time() + 300,
+                    "expires": time.time() + FLOW_SECONDS,
                 }
                 response = RedirectResponse(url, status_code=303)
                 response.set_cookie(
                     FLOW_COOKIE,
                     flow,
-                    max_age=300,
+                    max_age=FLOW_SECONDS,
                     secure=True,
                     httponly=True,
                     samesite="lax",
                 )
                 return response
-            except (httpx.HTTPError, OAuthError, ValueError, KeyError):
+            except (httpx.HTTPError, OAuthError, ValueError, KeyError, TypeError):
                 return JSONResponse(
                     {"error": {"message": "Sign-in provider unavailable"}},
                     status_code=503,
                 )
+            finally:
+                self.pending_logins -= 1
 
         @router.get("/callback")
         async def callback(request: Request):
@@ -220,7 +290,7 @@ class BrowserAuth:
                 lifetime = min(
                     self.settings.session_seconds, int(claims["exp"] - time.time())
                 )
-                if lifetime <= 0 or len(self.sessions) >= 4096:
+                if lifetime <= 0 or len(self.sessions) >= SESSION_LIMIT:
                     return response
                 self.sessions[digest(session_id)] = {
                     "subject": (claims["iss"], claims["sub"]),
