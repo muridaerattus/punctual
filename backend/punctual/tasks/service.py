@@ -8,6 +8,7 @@ from ..db.models import Board, LeaseRelease, Task
 from ..db.session import Database
 from . import leases
 from .errors import Conflict
+from .reads import ReadWorkflows
 from .schemas import BoardInput, ForceReleaseInput, TaskInput, TaskPatch
 
 
@@ -27,7 +28,7 @@ def public(task: Task):
     return result
 
 
-class TaskService:
+class TaskService(ReadWorkflows):
     """Task use cases shared by HTTP and MCP, each with a short ORM transaction."""
 
     def __init__(self, path: str):
