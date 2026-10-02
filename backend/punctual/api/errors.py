@@ -24,7 +24,10 @@ def install_error_handlers(app: FastAPI):
 
     @app.exception_handler(Conflict)
     async def conflict_handler(request, exc):
+        error = {"code": exc.code, "message": exc.message}
+        if getattr(exc, "details", None) is not None:
+            error["details"] = exc.details
         return JSONResponse(
-            {"error": {"code": exc.code, "message": exc.message}},
+            {"error": error},
             status_code=exc.status,
         )

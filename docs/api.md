@@ -36,6 +36,54 @@ assignee names are coordination labels.
 | POST | `/api/tasks/{id}/force-release` | JSON: current `revision`, public `lease_id`, and `reason`; overrides a stuck lease |
 | GET | `/api/tasks/{id}/lease-history` | Durable forced-release records, retained after task deletion |
 
+### Workflow endpoints
+
+These routes use the same service methods as the MCP workflow tools. Read responses
+are data objects; write responses include `replayed`. HTTP errors keep the existing
+`error` envelope, with optional `details` (such as ambiguous board matches).
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/workflows/tasks` | Compact paged search; required `board` prefix/exact name; optional `status`, `assignee`, `query`, `parent_id`, `available`, `limit`, `cursor` |
+| GET | `/api/workflows/tasks/{key}/context` | Full task/parent, board, child counts and compact paged `subtasks` |
+| GET | `/api/workflows/boards/overview` | Required `board`, optional sample `limit`; exact counts plus bounded samples |
+| GET | `/api/workflows/available-work` | Required `board`; optional `assignee`, `query`, `limit`, `cursor`; unclaimed To Do candidates |
+| GET | `/api/workflows/tasks/{id}/lease-history` | Paged forced-release records, even after task deletion |
+| POST | `/api/workflows/tasks/{key}/start` | Atomic claim and In Progress transition |
+| POST | `/api/workflows/tasks/{key}/complete` | Atomic Complete transition and owned active lease release |
+| POST | `/api/workflows/task-trees` | Atomic parent and up to 50 one-level children |
+
+Paged reads default to 50 items, with limits from 1 to 100 and a positive last-row-ID
+cursor. Overview samples default to 10. Follow `next_cursor` with unchanged filters;
+`truncated` indicates further results. Compact task items omit descriptions and all
+general reads omit lease tokens. Prefix resolution takes precedence over exact name
+matching; duplicate names require choosing one of the returned prefixes. Cursor
+pages are separate snapshots, and availability can change before a claim.
+
+Start body: `revision`, `owner`, `lease_token`, `request_id`, optional `seconds`
+(30–86400, default 900), and optional `assignee`. Complete body: `revision`,
+`lease_token`, and `request_id`. Both return `{ "task": …, "replayed": false }`.
+Starting a completed task is rejected; use an explicit granular edit to reopen it.
+Assignee is unchanged unless supplied; parent and child statuses remain independent.
+
+Tree body: `board`, `request_id`, `parent`, and `children`. Parent and children accept
+`title`, `description`, `status`, and `assignee`; board and relationships are set by
+the operation. The result contains `parent`, `children`, and `replayed`.
+
+Generate and save a fresh random URL-safe request ID of 32–100 characters before
+each composite write. Start requires a pre-saved lease token with the same format.
+Each composite write checks its expected state and commits the full operation and
+receipt inside one short SQLite write transaction. On a lost response, retry with
+the same request ID and identical payload: a persisted receipt returns the original
+public snapshot with `replayed: true`. It never reapplies the write, even after
+later edits or deletion, and contains no lease token. Different input with the same
+request ID is rejected. Fetch current context before subsequent work, and retain
+your saved token for renewal/completion. Receipts are retained to preserve retry
+guarantees; do not manually prune them and then reuse request IDs.
+
+The original `/api/tasks` routes retain their full-detail array contracts for the
+UI and CLI. Use workflow reads for bounded agent integrations.
+
 ```sh
 curl http://localhost:8000/api/tasks \
   -H "Authorization: Bearer $PUNCTUAL_API_KEY" \

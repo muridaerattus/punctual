@@ -8,6 +8,7 @@ from .api.boards import board_router
 from .api.errors import install_error_handlers
 from .api.oidc import BrowserAuth
 from .api.tasks import task_router
+from .api.workflows import workflow_router
 from .config import Settings
 from .mcp.auth import MCPAuth
 from .mcp.server import create_mcp
@@ -60,6 +61,7 @@ def create_app(db_path: str | None = None, api_key: str | None = None):
         return {"status": "ok"}
 
     app.include_router(task_router(tasks))
+    app.include_router(workflow_router(tasks))
     app.include_router(board_router(tasks))
     app.mount("/mcp", mcp_app)
     if settings.static.is_dir():
