@@ -8,15 +8,37 @@ This implementation targets the **2026-07-28**
 specification using FastMCP 4 / MCP SDK 2. Requests are stateless, carry per-request
 version and capability metadata, and do not use a session ID or initialization handshake.
 
-Tools: `list_boards`, `create_board`, `get_task_by_key`, `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`,
-`claim_task`, `renew_lease`, `release_lease`, `force_release_lease`. Tools share exactly the HTTP service
-and lock checks. Results have `{ "ok": true, "data": … }` or
+Tools share the HTTP `TaskService`, revision checks, and lease rules. Results have
+`{ "ok": true, "data": … }` or
 `{ "ok": false, "error": { "code": …, "message": … } }`; agents must check `ok`.
+Domain failures also set MCP `isError`. Workflow results include a concise `summary`.
+Schema validation failures use `invalid_arguments` with field paths/types, omitting
+submitted values. Claim and renewal are the only tools that return lease tokens;
+renewal, release, edit, delete, and completion accept existing legacy tokens.
+
+| Tool | Purpose |
+| --- | --- |
+| `list_boards`, `create_board` | Discover or create boards and immutable prefixes |
+| `get_task`, `get_task_by_key` | Full task detail, revision, and public lease metadata |
+| `list_tasks` | Bounded compact task search by numeric board ID |
+| `query_tasks` | Bounded compact search by board prefix/name, with parent and availability filters |
+| `get_task_context` | Task, board, parent, and a bounded page of subtasks |
+| `board_overview` | Exact status/claim counts and bounded samples, distinguishing top-level tasks and subtasks |
+| `find_available_work` | Unclaimed To Do candidates, ordered by numeric ID |
+| `start_task` | Atomically claim a task and set In Progress |
+| `complete_task` | Atomically complete a task and release its owned active lease |
+| `create_task_tree` | Atomically create a parent and up to 50 one-level children |
+| `create_task`, `update_task`, `delete_task` | Granular creation, revision-checked edits, and deletion |
+| `claim_task`, `renew_lease`, `release_lease` | Granular claim lifecycle |
+| `force_release_lease` | Explicit override with revision, public lease ID, and recorded reason |
+| `get_lease_history` | Bounded forced-release records, including for deleted numeric task IDs |
 
 Use `list_boards` to choose a board, or `create_board(board)` to create one.
 `list_tasks(board_id=...)` and `create_task(task={..., "board_id": ...})` scope work;
-omission selects board 1. Resolve ticket keys with `get_task_by_key(key)`, then use
-numeric task IDs for mutations.
+omission selects board 1. New workflows accept an explicit board prefix or exact
+board name, or an exact ticket key. Duplicate board names produce structured
+candidate matches; use a unique prefix to continue. Granular mutations still take
+numeric task IDs obtained from `get_task_by_key(key)`.
 
 SDK client example (run in the backend environment):
 
@@ -37,10 +59,73 @@ async def main():
 asyncio.run(main())
 ```
 
-Recommended agent workflow: choose board → list → get → claim → update with revision
-and token → renew while working → complete → release. Save a random lease token
-before claiming; see [lease recovery](api.md#recovering-a-lost-claim-response-or-token).
-An expired lease must be claimed again.
+## Agent workflows
+
+Recommended flow: choose board → find available work → get task context → start →
+renew while working → complete. `start_task` combines claim and status update in
+one transaction; `complete_task` combines completion and release. Pass the revision
+you actually read. A conflict means fetch and reconsider the change, rather than
+automatically retrying with a newer revision. Claim owner and assignee are separate;
+starting only changes assignee when explicitly requested. Completing a parent does
+not complete its children.
+
+Save a random lease token **and a distinct request ID** before a composite write
+(for example, generate each with `secrets.token_urlsafe(32)`). Keep them outside
+version control. The request ID is required for `start_task`, `complete_task`, and
+`create_task_tree`; start also requires a client-supplied token. Retry a lost response
+with the identical request ID and input. Durable receipts survive restart and
+prevent repeated edits or duplicate task trees. Reusing an ID with different input
+is an error. Replays return the original public result with `replayed: true`, not
+a fresh view of the task; fetch current context before further work. Receipt results
+contain no lease token. Use a new request ID for every new intended operation.
+
+Completion requires your active lease. Expired leases must be claimed again; see
+[lease recovery](api.md#recovering-a-lost-claim-response-or-token) for granular claims.
+Lease renewal still uses `renew_lease` with the numeric task ID and saved token.
+Availability is a snapshot, not a reservation: another agent may claim a candidate
+before your start request.
+
+### Bounded reads and migration
+
+**MCP `list_tasks` now returns a page object in `data`, rather than an array.** Read
+`data.items`, and pass `data.next_cursor` to the next call with the same filters.
+Pages have `truncated: true` when further matches exist; a final page has a null
+cursor. Lists default to 50 items, with a hard maximum of 100. Compact list items
+omit descriptions; use `get_task`, `get_task_by_key`, or `get_task_context` for full
+detail. Existing HTTP `/api/tasks` and CLI list output retain their contracts.
+
+`get_task_context` pages its `subtasks` independently of full task/parent detail.
+Counts and `board_overview` aggregates cover the entire matching set even when
+samples are truncated. Cursor ordering is ascending numeric ID, not priority.
+Task pages, context, and overviews include an `as_of` Unix timestamp used consistently
+for lease activity checks. Pages fetched at different times are separate snapshots. Expired leases are
+presented as unclaimed, and general read responses never include lease tokens.
+
+`get_lease_history` accepts a numeric task ID because forced-release records survive
+deletion. It contains only explicit forced releases, not normal claim/release events
+or a complete task timeline.
+
+### Native behavior and scope
+
+The workflow audit reviewed the current service, documentation, and project changes.
+Revision/lease enforcement, expired-lease availability, recoverable claims, stable
+numbering, parent validation, and forced-release recording are already native domain
+behavior. Workflows reuse these rules; there is no need for an expired-lease cleanup
+tool or a second rules engine in the MCP adapter.
+
+Before extending automation, review the project's latest documentation and product
+changes for native AI features or automation rules, including deployment-specific
+integrations. No AI classification, notification engine, or conditional automation
+engine was found in the audited implementation.
+
+[Linear's documented MCP workflows](https://linear.app/docs/mcp#common-use-cases),
+[community integration patterns](https://github.com/wrsmith108/linear-claude-skill),
+and [an agent workflow guide](https://www.builder.io/blog/linear-mcp-server) inform
+the context, planning, and overview use cases. They are analogous examples, not
+Punctual usage telemetry. Punctual's current model cannot provide a full activity
+timeline, reliable completed-by-period reporting, or dependency/blocker analytics.
+Those require separate data-model work; `updated_at` is not a completion timestamp
+and a parent relationship is not a dependency edge.
 
 ## OpenCode (bearer authentication)
 
@@ -189,7 +274,7 @@ uv run punctual --url http://localhost:8000 --json doctor
 ```
 
 Use the base URL, without `/mcp/`. `doctor` checks health, frontend availability,
-authenticated API access, MCP discovery for `2026-07-28`, and all twelve tools.
+authenticated API access, MCP discovery for `2026-07-28`, and all twenty tools.
 It performs no writes and prints neither keys nor task contents. Exit code is
 zero on success and one on failure. Errors distinguish connection failures,
 401 (key mismatch), 404/405 (wrong endpoint), 421 (disallowed host), unsupported

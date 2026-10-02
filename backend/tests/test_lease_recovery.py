@@ -211,9 +211,9 @@ def test_malformed_tokens_are_rejected_by_http_and_mcp(client, auth, token, acti
     )
     assert response.status_code == 200
     result = response.json()["result"]
-    if schema_rejection:
-        assert result["isError"] is True
-    else:
-        assert result["structuredContent"]["ok"] is False
-        assert result["structuredContent"]["error"]["code"] == expected_code
+    assert result["isError"] is True
+    assert result["structuredContent"]["ok"] is False
+    assert result["structuredContent"]["error"]["code"] == (
+        "invalid_arguments" if token == "\ud800" or action == "claim" else expected_code
+    )
     assert client.get(path, headers=auth).json() == before

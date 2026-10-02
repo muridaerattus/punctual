@@ -8,6 +8,7 @@ TOOLS = {
     "create_board",
     "get_task_by_key",
     "list_tasks",
+    "query_tasks",
     "get_task",
     "create_task",
     "update_task",
@@ -16,6 +17,13 @@ TOOLS = {
     "renew_lease",
     "release_lease",
     "force_release_lease",
+    "get_lease_history",
+    "get_task_context",
+    "board_overview",
+    "find_available_work",
+    "start_task",
+    "complete_task",
+    "create_task_tree",
 }
 
 
