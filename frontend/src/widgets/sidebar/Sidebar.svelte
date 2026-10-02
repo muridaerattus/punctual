@@ -1,8 +1,8 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import Brand from '../../shared/ui/Brand.svelte';
   import type { BoardInfo } from '../../entities/board/types';
   let {
-    count,
     boards,
     boardId,
     busy,
@@ -12,7 +12,6 @@
     onhelp,
     onlogout,
   }: {
-    count: number;
     boards: BoardInfo[];
     boardId: number;
     busy: boolean;
@@ -22,15 +21,34 @@
     onhelp: () => void;
     onlogout: () => void;
   } = $props();
+
+  let editingIdentity = $state(false);
+  let identityTrigger = $state<HTMLButtonElement>();
+  let identityInput = $state<HTMLInputElement>();
+
+  export async function focusIdentity() {
+    editingIdentity = true;
+    await tick();
+    identityInput?.focus();
+  }
+
+  function closeIdentity() {
+    owner = owner.trim() || 'human';
+    editingIdentity = false;
+    identityTrigger?.focus();
+  }
+
+  function handleIdentityKey(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeIdentity();
+    }
+  }
 </script>
 
 <aside class="sidebar">
   <Brand />
-  <div class="workspace-label">
-    <div>Workspace</div>
-  </div>
-  <p class="eyebrow">WORKSPACE</p>
-  <div class="nav-active"><span>▦</span> Board <span class="count">{count}</span></div>
   <div class="board-picker">
     <label for="board-select">Board</label>
     <select
@@ -44,11 +62,40 @@
     <button class="quiet" disabled={busy} onclick={oncreate}>+ New board</button>
   </div>
   <div class="sidebar-bottom">
-    <label for="owner">Your claim identity <kbd>O</kbd></label>
-    <input id="owner" bind:value={owner} maxlength="100" placeholder="human" />
+    <div class="identity">
+      <button
+        class="quiet identity-trigger"
+        bind:this={identityTrigger}
+        aria-expanded={editingIdentity}
+        aria-controls={editingIdentity ? 'claim-identity-editor' : undefined}
+        onclick={() => (editingIdentity ? closeIdentity() : focusIdentity())}
+      >
+        <span class="identity-summary">Claim as {owner.trim() || 'human'}</span><kbd>O</kbd>
+      </button>
+      {#if editingIdentity}
+        <form
+          id="claim-identity-editor"
+          class="identity-editor"
+          onsubmit={(event) => {
+            event.preventDefault();
+            closeIdentity();
+          }}
+        >
+          <label for="owner">Your claim identity</label>
+          <input
+            id="owner"
+            bind:this={identityInput}
+            bind:value={owner}
+            maxlength="100"
+            placeholder="human"
+            onkeydown={handleIdentityKey}
+          />
+          <button type="submit" class="quiet" onkeydown={handleIdentityKey}>Done</button>
+        </form>
+      {/if}
+    </div>
     <button class="quiet" onclick={onhelp}>Keyboard shortcuts <kbd>?</kbd></button>
     <button class="quiet" onclick={onlogout}>Sign out <kbd>⇧ L</kbd></button>
-    <div class="version">PUNCTUAL <span>0.1</span></div>
   </div>
 </aside>
 
@@ -56,6 +103,12 @@
   .board-picker {
     margin-top: var(--space-4);
     min-width: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  select {
+    min-width: 0;
+    font-size: var(--text-base);
   }
   .sidebar {
     width: 230px;
@@ -66,57 +119,46 @@
     display: flex;
     flex-direction: column;
   }
-  .workspace-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 40px 0 35px;
-    font-size: var(--text-sm);
-  }
-  .eyebrow {
-    margin-bottom: 14px;
-    font-size: var(--text-xs);
-  }
-  .nav-active {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    background: var(--surface-selected);
-    color: var(--text-selected);
-    padding: var(--space-3);
-    border-radius: var(--radius-control);
-    box-shadow: var(--shadow-selected);
-  }
-  .count {
-    margin-left: auto;
-  }
   .sidebar-bottom {
     margin-top: auto;
-    padding-top: 80px;
+    padding-top: var(--space-8);
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+  .identity {
+    min-width: 0;
+  }
+  .identity-summary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .identity-editor {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
   }
   input {
-    font-size: var(--text-sm);
-    margin: var(--space-2) 0 var(--space-5);
+    min-width: 0;
+    font-size: var(--text-base);
   }
   .quiet {
     width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-2);
+    min-height: 40px;
     padding: var(--space-2);
-    font-size: var(--text-xs);
+    font-size: var(--text-base);
+    text-align: left;
   }
-  .version {
-    border-top: 1px solid var(--border-subtle);
-    margin-top: var(--space-6);
-    padding-top: var(--space-5);
-    font-size: 8px;
-    letter-spacing: 1px;
-    color: var(--text-muted);
-  }
-  .version span {
-    float: right;
-    color: var(--text-muted);
+  kbd {
+    flex-shrink: 0;
   }
   @media (max-width: 1100px) {
     .sidebar {
@@ -132,27 +174,35 @@
       align-items: center;
       flex-wrap: wrap;
       gap: var(--space-4);
+      border-right: 0;
       border-bottom: 1px solid var(--border-subtle);
     }
-    .eyebrow,
-    .workspace-label,
-    .nav-active,
-    .version {
-      display: none;
+    .board-picker {
+      flex: 1 1 220px;
+      margin-top: 0;
     }
     .sidebar-bottom {
       padding: 0;
-      margin: 0 0 0 auto;
+      margin: 0;
+      width: 100%;
       display: flex;
-      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: var(--space-2);
     }
-    .sidebar-bottom label,
-    input,
-    kbd {
-      display: none;
+    .identity {
+      flex: 1 1 100%;
     }
     .quiet {
       width: auto;
+      min-height: 44px;
+    }
+    .identity-trigger {
+      width: 100%;
+    }
+    input,
+    select {
+      font-size: max(16px, var(--text-base));
     }
   }
 </style>

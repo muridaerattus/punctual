@@ -31,11 +31,11 @@
     }
   }}
 >
+  <h3>{task.title}</h3>
   <span class="task-meta">
     <span class="key">{task.key}</span>
-    {#if task.parent_key}<span>↳ {task.parent_key}</span>{/if}
+    {#if task.parent_key}<span>Parent {task.parent_key}</span>{/if}
   </span>
-  <h3>{task.title}</h3>
   {#if task.description}<p class="task-description">{task.description}</p>{/if}
   {#if hasFooter}
     <span class="task-footer">
@@ -44,9 +44,7 @@
           >{subtaskCount}
           {subtaskCount === 1 ? 'subtask' : 'subtasks'}</span
         >{/if}
-      {#if task.lease_owner}<span class="lease" title="Claimed by {task.lease_owner}"
-          >⌑ {task.lease_owner}</span
-        >{/if}
+      {#if task.lease_owner}<span class="lease">Claimed by {task.lease_owner}</span>{/if}
     </span>
   {/if}
 </button>
@@ -83,8 +81,9 @@
     font-size: var(--text-xs);
     line-height: 1.4;
     color: var(--text-muted);
-    margin-bottom: var(--space-1);
+    margin-top: var(--space-1);
     flex-wrap: wrap;
+    overflow-wrap: anywhere;
   }
   .key {
     letter-spacing: 0.3px;
@@ -98,13 +97,9 @@
     color: var(--text-secondary);
     line-height: 1.55;
     margin-top: var(--space-1);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
     overflow: hidden;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .task-footer {
     display: flex;
@@ -115,6 +110,10 @@
     font-size: var(--text-xs);
     line-height: 1.4;
     color: var(--text-muted);
+    overflow-wrap: anywhere;
+  }
+  .task-footer > span {
+    min-width: 0;
   }
   .assignee {
     color: var(--text-secondary);
@@ -122,10 +121,6 @@
   .lease {
     margin-left: auto;
     color: var(--warning);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   @media (min-width: 1500px) {
     .task {

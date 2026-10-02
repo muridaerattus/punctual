@@ -34,6 +34,13 @@
   });
 
   const menuItems: MenuItem[] = $derived([
+    { label: 'Subtask', shortcut: 'S', disabled: !!task.parent_id, onselect: onsubtask },
+    ...(task.lease_owner && ownsLease
+      ? [
+          { label: 'Renew lease', shortcut: 'R', onselect: () => onlease('renew') },
+          { label: 'Release lease', shortcut: 'U', onselect: () => onlease('release') },
+        ]
+      : []),
     { label: 'Delete task', shortcut: 'X', danger: true, onselect: ondelete },
   ]);
 </script>
@@ -44,7 +51,7 @@
     <span class="title">{task.title}</span>
   </span>
   <div class="actions">
-    <button onclick={onedit}>Edit <kbd>E</kbd></button>
+    <button onclick={onedit}>Edit</button>
     <label
       >Move
       <select
@@ -52,20 +59,18 @@
         value={task.status}
         onchange={(event) => onmove(event.currentTarget.value as Status)}
       >
-        {#each statuses as status, index}<option value={status}>{status} ({index + 1})</option
-          >{/each}
+        {#each statuses as status}<option value={status}>{status}</option>{/each}
       </select>
     </label>
-    <button disabled={!!task.parent_id} onclick={onsubtask}>Subtask <kbd>S</kbd></button>
     {#if !task.lease_owner}
-      <button onclick={() => onlease('claim')}>Claim <kbd>C</kbd></button>
-    {:else if ownsLease}
-      <button onclick={() => onlease('renew')}>Renew <kbd>R</kbd></button>
-      <button onclick={() => onlease('release')}>Release <kbd>U</kbd></button>
-      {#if remaining}<span class="lease">{remaining}</span>{/if}
+      <button onclick={() => onlease('claim')}>Claim</button>
     {:else}
-      <span class="lease" title={`Claimed by ${task.lease_owner}`}>
-        Claimed by <strong>{task.lease_owner}</strong>{#if remaining}&nbsp;· {remaining}{/if}
+      <span
+        class="lease"
+        title={`Claimed by ${task.lease_owner}${remaining ? ` · ${remaining}` : ''}`}
+      >
+        <span class="lease-owner">Claimed by <strong>{task.lease_owner}</strong></span>
+        {#if remaining}<span class="lease-expiry">· {remaining}</span>{/if}
       </span>
     {/if}
     <OverflowMenu label="More task actions" items={menuItems} placement="up" />
@@ -75,6 +80,7 @@
 <style>
   .actionbar {
     display: flex;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 12px;
     min-height: 44px;
@@ -85,18 +91,18 @@
     min-width: 0;
   }
   .selected {
-    flex: 1 1 auto;
-    min-width: 60px;
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     align-items: baseline;
     gap: 9px;
-    font-size: 11px;
+    font-size: var(--text-sm);
     overflow: hidden;
   }
   .key {
     flex: none;
     color: var(--text-selected);
-    font-size: 10px;
+    font-size: var(--text-xs);
   }
   .title {
     color: var(--text-primary);
@@ -105,13 +111,16 @@
     white-space: nowrap;
   }
   .actions {
-    flex: none;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 80px);
     display: flex;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 6px;
   }
   button {
-    font-size: 10px;
+    font-size: var(--text-xs);
     padding: 6px 8px;
     background: transparent;
     white-space: nowrap;
@@ -120,31 +129,37 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 10px;
+    font-size: var(--text-xs);
     white-space: nowrap;
   }
   select {
-    font-size: 10px;
+    font-size: var(--text-xs);
     margin: 0;
     padding: 6px 2px;
   }
   .lease {
-    font-size: 10px;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;
+    flex: 0 1 220px;
+    font-size: var(--text-xs);
     color: var(--text-muted);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     max-width: 220px;
     padding: 0 4px;
+  }
+  .lease-owner {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lease-expiry {
+    flex: none;
   }
   .lease strong {
     color: var(--text-selected);
     font-weight: 400;
-  }
-  @media (max-width: 1100px) {
-    kbd {
-      display: none;
-    }
   }
   @media (max-width: 760px) {
     .actionbar {
@@ -159,6 +174,7 @@
     }
     .actions {
       flex-wrap: wrap;
+      max-width: 100%;
     }
     .lease {
       max-width: 160px;

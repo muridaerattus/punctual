@@ -28,6 +28,7 @@ and close with Escape.
 | --- | --- |
 | N | New task |
 | J / K or ↓ / ↑ | Next / previous card |
+| ← / → | Move selected task to previous / next status |
 | Enter (on card) / E | Open / edit task |
 | S | New subtask of selected top-level task |
 | 1 / 2 / 3 | Move to To Do / In Progress / Complete |
@@ -35,11 +36,20 @@ and close with Escape.
 | R / U | Renew / release your lease |
 | X / Delete | Delete, with confirmation |
 | / | Focus search |
-| G | Refresh (also in the toolbar ⋯ menu) |
-| O | Focus claim identity |
+| G | Refresh (also in the ⋯ menu beside the board name) |
+| O | Open claim identity editing |
 | Shift L | Sign out |
 | Ctrl/Cmd Enter | Save task in editor |
 | Escape | Close dialog / clear focused search |
+
+Search and **New task** sit in the board header. Each column also has a **+** button
+to create a task with that status. Select a card to edit it, change its status, or
+claim it from the bottom action bar. The bar's **⋯** menu contains subtask creation,
+lease renewal/release for your own claims, and deletion. Active claims show their
+owner and remaining time.
+
+Use **Claim as …** in the sidebar (or **O**) to edit your claim identity. The
+sidebar's **Keyboard shortcuts** button opens the same reference as **?**.
 
 The board refreshes every five seconds, pausing during editing. If a refresh fails,
 a short alert keeps the last loaded tasks on screen and offers Retry; it clears after

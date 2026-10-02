@@ -51,13 +51,11 @@
     <div class="dialog-heading">
       <div>
         {#if original}
-          <p class="eyebrow">{original.key} / REVISION {original.revision}</p>
+          <p class="eyebrow">{original.key}</p>
         {/if}
         <h2>{original ? 'Edit task' : parent ? 'New subtask' : 'New task'}</h2>
       </div>
-      <button type="button" class="quiet" onclick={onclose} aria-label="Close editor"
-        >✕ <kbd>Esc</kbd></button
-      >
+      <button type="button" class="quiet" onclick={onclose} aria-label="Close editor">✕</button>
     </div>
     <label
       >Title<input

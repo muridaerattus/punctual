@@ -1,21 +1,19 @@
 <script lang="ts">
   import BoardColumn from './BoardColumn.svelte';
-  import BoardFooter from './BoardFooter.svelte';
   import BoardToolbar from './BoardToolbar.svelte';
   import TaskActions from './TaskActions.svelte';
   import Toast from './Toast.svelte';
   import type { Board } from './board.svelte';
   import { statuses } from '../../entities/task/types';
   import type { EditorOptions } from '../../features/task-editor/types';
+  import OverflowMenu from '../../shared/ui/OverflowMenu.svelte';
   let {
     board,
     onedit,
-    onhelp,
     ondelete,
   }: {
     board: Board;
     onedit: (options: EditorOptions) => void;
-    onhelp: () => void;
     ondelete: () => void;
   } = $props();
   const subtaskCounts = $derived.by(() => {
@@ -29,11 +27,24 @@
 
 <main class="board-main">
   <header class="board-header">
-    <h1><span class="workspace">Workspace /</span> {board.boardName}</h1>
+    <div class="board-identity">
+      <h1 title={board.boardName}>{board.boardName}</h1>
+      <OverflowMenu
+        label="Board actions"
+        items={[
+          {
+            label: 'Refresh board',
+            shortcut: 'G',
+            disabled: board.busy,
+            onselect: () => board.refresh(),
+          },
+        ]}
+      />
+    </div>
+    <div class="board-search"><BoardToolbar bind:search={board.search} /></div>
     <button class="primary" onclick={() => onedit({})}>+ New task <kbd>N</kbd></button>
     <Toast message={board.notice} />
   </header>
-  <BoardToolbar bind:search={board.search} busy={board.busy} onrefresh={() => board.refresh()} />
   {#if board.error}<div class="error" role="alert">
       {board.error} <button onclick={() => board.refresh()}>Refresh board</button>
     </div>{/if}
@@ -47,6 +58,7 @@
         {status}
         {index}
         tasks={board.filtered.filter((task) => task.status === status)}
+        filtering={!!board.search.trim()}
         {subtaskCounts}
         selected={board.selected}
         onselect={(id) => (board.selected = id)}
@@ -69,7 +81,6 @@
         />
       {/if}
     </div>
-    <BoardFooter {onhelp} />
   </div>
 </main>
 
@@ -81,34 +92,54 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    container-type: inline-size;
   }
   .board-header {
     position: relative;
-    height: 60px;
+    min-height: 68px;
     flex-shrink: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 270px) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .board-identity {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+    gap: 8px;
+    min-width: 0;
+  }
+  .board-identity > :global(.overflow) {
+    flex-shrink: 0;
+    position: static;
+  }
+  .board-identity :global(.menu) {
+    left: 0;
+    right: auto;
+  }
+  .board-search {
+    min-width: 0;
   }
   h1 {
-    font-size: 21px;
+    font-size: var(--text-heading);
+    font-family: var(--font-heading);
+    line-height: 1.25;
+    margin: 0;
     letter-spacing: -0.5px;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .workspace {
-    color: var(--text-muted);
-    font-weight: 400;
-  }
   .refresh-error {
     display: flex;
     align-items: center;
     gap: 6px;
     margin-top: 10px;
-    font-size: 10px;
+    font-size: var(--text-sm);
     color: var(--warning);
   }
   .refresh-error button {
@@ -123,6 +154,8 @@
   .board-header .primary {
     flex-shrink: 0;
     padding: 8px 13px;
+    font-size: var(--text-sm);
+    white-space: nowrap;
   }
   .columns {
     display: grid;
@@ -134,16 +167,23 @@
   }
   .board-bottom {
     flex-shrink: 0;
-    padding-top: 14px;
+    padding: 14px 0 12px;
   }
   .action-slot {
-    height: 46px;
+    height: 48px;
   }
   .action-slot > :global(.actionbar) {
     margin: 0;
   }
-  .board-bottom > :global(footer) {
-    padding: 8px 0 12px;
+  @container (max-width: 620px) {
+    .board-header {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px 12px;
+    }
+    .board-search {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
   }
   @media (min-width: 1500px) {
     .board-main {
@@ -165,15 +205,6 @@
     .board-main {
       padding: 0 18px;
     }
-    .board-header {
-      height: 56px;
-    }
-    h1 {
-      font-size: 18px;
-    }
-    .workspace {
-      display: none;
-    }
     .columns {
       grid-template-columns: 1fr;
       flex: none;
@@ -184,9 +215,6 @@
     }
     .action-slot > :global(.actionbar) {
       margin: 25px 0 10px;
-    }
-    .board-bottom > :global(footer) {
-      padding: 23px 0;
     }
   }
 </style>

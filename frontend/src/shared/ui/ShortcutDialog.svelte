@@ -35,7 +35,7 @@
     gap: 15px;
     border-bottom: 1px solid var(--border-subtle);
     padding: 10px 0;
-    font-size: 12px;
+    font-size: var(--text-sm);
     color: var(--text-secondary);
   }
 </style>

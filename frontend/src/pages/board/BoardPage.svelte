@@ -9,7 +9,7 @@
   import { Board } from '../../widgets/board/board.svelte';
   import { handleShortcut } from '../../shared/keyboard/shortcuts';
   import type { EditorOptions } from '../../features/task-editor/types';
-  import type { Status, Task, TaskInput } from '../../entities/task/types';
+  import { statuses, type Status, type Task, type TaskInput } from '../../entities/task/types';
   import type { TaskApi } from '../../entities/task/api';
   import type { BoardApi } from '../../entities/board/api';
   import type { LeaseState } from '../../entities/task/lease-state.svelte';
@@ -33,6 +33,7 @@
   let deleting = $state<Task | null>(null);
   let help = $state(false);
   let creatingBoard = $state(false);
+  let sidebar = $state<Sidebar>();
   const modalOpen = $derived(!!editor || !!deleting || help || creatingBoard);
 
   function openEditor(options: EditorOptions = {}) {
@@ -56,6 +57,11 @@
   async function move(status: Status) {
     await board.move(status);
     await focusCard();
+  }
+  async function moveRelative(delta: number) {
+    if (!board.current || board.busy) return;
+    const status = statuses[statuses.indexOf(board.current.status) + delta];
+    if (status) await move(status);
   }
   async function save(input: TaskInput, original?: Task) {
     if (await board.save(input, original)) {
@@ -81,6 +87,8 @@
         help: () => (help = true),
         next: () => navigate(1),
         previous: () => navigate(-1),
+        moveLeft: () => moveRelative(-1),
+        moveRight: () => moveRelative(1),
         todo: () => move('To Do'),
         inProgress: () => move('In Progress'),
         complete: () => move('Complete'),
@@ -89,7 +97,7 @@
         release: () => board.lease('release'),
         delete: askDelete,
         refresh: () => board.refresh(),
-        identity: () => document.getElementById('owner')?.focus(),
+        identity: () => sidebar?.focusIdentity(),
         logout: onlogout,
       }),
       !modalOpen,
@@ -108,7 +116,7 @@
 
 <div class="workspace">
   <Sidebar
-    count={board.tasks.length}
+    bind:this={sidebar}
     boards={board.boards}
     boardId={board.boardId}
     busy={board.busy || modalOpen}
@@ -121,7 +129,7 @@
     onhelp={() => (help = true)}
     {onlogout}
   />
-  <BoardView {board} onedit={openEditor} onhelp={() => (help = true)} ondelete={askDelete} />
+  <BoardView {board} onedit={openEditor} ondelete={askDelete} />
 </div>
 {#if creatingBoard}
   <BoardCreator

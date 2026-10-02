@@ -128,7 +128,7 @@
     border: 0;
     background: transparent;
     text-align: left;
-    font-size: 11px;
+    font-size: var(--text-sm);
     padding: 8px 9px;
   }
   [role='menuitem']:hover,

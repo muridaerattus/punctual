@@ -66,7 +66,7 @@
     gap: 20px;
   }
   small {
-    font-size: 11px;
+    font-size: var(--text-xs);
   }
   @media (max-width: 760px) {
     .login {

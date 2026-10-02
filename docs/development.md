@@ -64,7 +64,7 @@ frontend/src/
 ├── app/                     # Composition, authentication lifecycle, style entry point
 ├── pages/board/             # Board workflows, dialogs, shortcut registry
 ├── widgets/
-│   ├── board/               # Board state, columns, toolbar, task actions, footer
+│   ├── board/               # Board state, columns, search, and contextual task actions
 │   └── sidebar/             # Board navigation and identity controls
 ├── features/
 │   ├── authentication/      # Login form and credential state

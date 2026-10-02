@@ -37,7 +37,9 @@
     >
     <label
       >Ticket prefix<input
-        bind:value={prefix}
+        bind:value={() => prefix, (value) => (prefix = value.toUpperCase())}
+        autocapitalize="characters"
+        spellcheck={false}
         required
         maxlength="8"
         pattern={'[A-Z]{1,8}'}

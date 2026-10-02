@@ -5,6 +5,7 @@
     status,
     index,
     tasks,
+    filtering = false,
     subtaskCounts,
     selected,
     onselect,
@@ -14,6 +15,7 @@
     status: Status;
     index: number;
     tasks: Task[];
+    filtering?: boolean;
     subtaskCounts: Map<number, number>;
     selected: number | null;
     onselect: (id: number) => void;
@@ -27,7 +29,6 @@
     <span class={`status-dot dot-${index}`}></span>
     <h2>{status}</h2>
     <span class="count">{tasks.length}</span>
-    <span class="column-key"><kbd>{index + 1}</kbd></span>
     <button aria-label={`New ${status} task`} onclick={() => oncreate(status)}>+</button>
   </div>
   <div class="cards">
@@ -41,12 +42,8 @@
       />
     {/each}
     {#if !tasks.length}
-      <div class="empty">
-        <span>＋</span>
-        <p>No tasks to display.</p>
-      </div>
+      <p class="empty">{filtering ? 'No matching tasks' : 'No tasks yet'}</p>
     {/if}
-    <button class="add-task" onclick={() => oncreate(status)}>+ Add task</button>
   </div>
 </section>
 
@@ -67,12 +64,13 @@
     flex-shrink: 0;
   }
   h2 {
-    font:
-      500 12px 'DM Sans',
-      sans-serif;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 500;
     letter-spacing: 0;
   }
   .status-dot {
+    flex-shrink: 0;
     width: 9px;
     height: 9px;
     border-radius: 50%;
@@ -87,15 +85,13 @@
     background: var(--accent);
     border-color: var(--accent);
   }
-  .column-key {
-    margin-left: auto;
-  }
   .column-header button {
+    margin-left: auto;
     background: transparent;
     border: 0;
     padding: 0 3px;
     color: var(--text-muted);
-    font-size: 18px;
+    font-size: var(--text-heading);
   }
   .cards {
     display: flex;
@@ -114,27 +110,10 @@
   .cards > :global(*) {
     flex-shrink: 0;
   }
-  .add-task {
-    border: 1px dashed var(--border-default);
-    background: transparent;
-    text-align: left;
-    color: var(--text-muted);
-    font-size: 11px;
-    padding: 12px;
-  }
   .empty {
-    border: 1px dashed var(--border-subtle);
-    border-radius: var(--radius-control);
-    padding: 38px 8px;
-    text-align: center;
+    padding: var(--space-3) 0;
     color: var(--text-muted);
-    font-size: 10px;
-  }
-  .empty > span {
-    font-size: 25px;
-    font-weight: 400;
-    display: block;
-    margin-bottom: 12px;
+    font-size: var(--text-sm);
   }
   @media (max-width: 760px) {
     .column {
@@ -142,9 +121,6 @@
     }
     .cards {
       overflow-y: visible;
-    }
-    .column-key {
-      display: none;
     }
   }
 </style>

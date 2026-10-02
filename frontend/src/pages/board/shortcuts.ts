@@ -3,6 +3,8 @@ const definitions = [
   { keys: ['n'], display: 'N', label: 'New task', action: 'create' },
   { keys: ['j', 'ArrowDown'], display: 'J / ↓', label: 'Next task', action: 'next' },
   { keys: ['k', 'ArrowUp'], display: 'K / ↑', label: 'Previous task', action: 'previous' },
+  { keys: ['ArrowLeft'], display: '←', label: 'Move to previous status', action: 'moveLeft' },
+  { keys: ['ArrowRight'], display: '→', label: 'Move to next status', action: 'moveRight' },
   { keys: ['e'], display: 'E / Enter on card', label: 'Edit selected task', action: 'edit' },
   { keys: ['s'], display: 'S', label: 'Create subtask', action: 'subtask' },
   { keys: ['1'], display: '1', label: 'Move to To Do', action: 'todo' },
