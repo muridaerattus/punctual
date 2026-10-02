@@ -17,7 +17,7 @@ def test_migrations_match_models_and_preserve_data(tmp_path):
     lease = store.lease(task["id"], "claim", owner="agent")
     with store.database.engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0003"
+        assert context.get_current_revision() == "0004"
         assert compare_metadata(context, Base.metadata) == []
 
     restarted = TaskService(store.path)

@@ -2,6 +2,7 @@ from alembic import context
 from sqlalchemy import URL, create_engine
 
 from punctual.config import Settings
+from punctual.db import idempotency_models  # noqa: F401
 from punctual.db.models import Base
 
 config = context.config
