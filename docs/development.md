@@ -45,6 +45,9 @@ uv run --locked --project scripts python -m unittest discover -s scripts/tests -
 Tests cover competing claims and edits, persisted leases, expiry/recovery, token
 conflicts, parent integrity, HTTP authentication/validation, stateless MCP calls
 sharing HTTP locking rules, boards, and migrations.
+Workflow tests also cover bounded reads and disambiguation, exact aggregate counts,
+atomic lifecycle/tree writes, durable request replay, concurrency, redaction, and
+HTTP/MCP discovery and result contracts.
 
 Frontend source is formatted with Prettier and `prettier-plugin-svelte`. Run
 `npm run format` in `frontend/` after editing Svelte, TypeScript, or CSS; production
@@ -134,6 +137,12 @@ and migrations are encapsulated in `db/`. Tests are organized by tasks, boards, 
 MCP, CLI, migrations, diagnostics, and deployment, with shared fixtures in
 `backend/tests/conftest.py`.
 
+`tasks/reads.py` and `tasks/writes.py` supply read and transactional write workflows
+to `TaskService`. Both adapters call these methods directly rather than composing
+separate transactions. MCP result/schema helpers centralize discovery metadata and
+error envelopes. Read aggregation uses bounded SQL queries and one database
+snapshot, rather than parallel requests against the same local database.
+
 ## Database development
 
 SQLAlchemy models live in `backend/punctual/db/models.py`. The task service uses ORM
@@ -157,3 +166,8 @@ Board migration `0003` is automatic and preserves existing task IDs, revisions,
 relationships, leases, and `PUN-<id>` keys in the default board. Back up before
 upgrading; downgrade is refused if additional boards exist because the old schema
 cannot represent their keys. See [backups](deployment.md#backups).
+
+Migration `0004` adds durable idempotency receipts, modeled in
+`db/idempotency_models.py`. Receipts commit with the associated task mutation and
+store public outcome snapshots and request fingerprints, not raw lease credentials.
+They survive task deletion and restart so repeated delivery cannot recreate work.

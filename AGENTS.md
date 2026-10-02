@@ -40,3 +40,12 @@ sync with behavior; never commit API keys or lease tokens.
 When working a tracked task, choose its board, claim it, update using its revision
 and lease token, renew as needed, and release when done. Save a random token before
 claiming. See [MCP workflow](docs/mcp.md) and [lease recovery](docs/api.md#recovering-a-lost-claim-response-or-token).
+
+Prefer `get_task_context` for task/parent/subtask context, `find_available_work` for
+unclaimed To Do candidates, and `board_overview` for counts. MCP `list_tasks` returns
+compact pages (`data.items`, `next_cursor`, `truncated`), not a task array. Use
+`start_task` and `complete_task` for atomic status/lease transitions, and
+`create_task_tree` for atomic parent/child creation. Save distinct random request IDs
+before composite writes and replay identical inputs after a lost response; never
+silently replace an expected revision. `get_lease_history` returns forced releases
+only. Workflow rules belong in the shared service, not the HTTP/MCP adapters.
