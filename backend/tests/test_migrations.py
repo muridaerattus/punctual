@@ -9,6 +9,7 @@ from sqlalchemy import create_engine, inspect, text
 from punctual.db.models import Base
 from punctual.tasks.schemas import TaskInput
 from punctual.tasks.service import TaskService
+from punctual.tasks.write_schemas import CompleteTaskInput
 
 
 def test_migrations_match_models_and_preserve_data(tmp_path):
@@ -66,6 +67,39 @@ def test_upgrade_preserves_existing_active_lease(tmp_path):
         assert migrated["lease_owner"] == "agent"
         assert len(migrated["lease_id"]) == 32
         store.lease(1, "release", token="old-token")
+    finally:
+        store.database.engine.dispose()
+
+
+def test_workflow_completes_migrated_legacy_lease(tmp_path):
+    path = tmp_path / "legacy-workflow.db"
+    engine = create_engine(f"sqlite:///{path}")
+    config = Config()
+    config.set_main_option(
+        "script_location", str(Path(__file__).parents[1] / "punctual/db/migrations")
+    )
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0001")
+        connection.execute(
+            text("""
+            INSERT INTO tasks (id, title, description, status, revision, created_at,
+                updated_at, lease_owner, lease_token, lease_expires_at)
+            VALUES (1, 'Legacy', '', 'In Progress', 3, 1, 1,
+                'agent', 'old-token', 9999999999)
+        """)
+        )
+    engine.dispose()
+    store = TaskService(str(path))
+    try:
+        data = CompleteTaskInput(
+            revision=3, lease_token="old-token", request_id="r" * 32
+        )
+        result = store.complete_task("PUN-1", data)
+        assert result["task"]["status"] == "Complete"
+        assert result["task"]["revision"] == 4
+        assert result["task"]["lease_owner"] is None
+        assert store.complete_task("PUN-1", data)["replayed"] is True
     finally:
         store.database.engine.dispose()
 
