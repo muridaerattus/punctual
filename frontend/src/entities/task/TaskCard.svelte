@@ -13,6 +13,8 @@
     onselect: (id: number) => void;
     onedit: (task: Task) => void;
   } = $props();
+
+  const hasFooter = $derived(Boolean(task.assignee || subtaskCount || task.lease_owner));
 </script>
 
 <button
@@ -29,57 +31,71 @@
     }
   }}
 >
-  <div class="task-meta">
-    <span>{task.key}</span>
+  <span class="task-meta">
+    <span class="key">{task.key}</span>
     {#if task.parent_key}<span>↳ {task.parent_key}</span>{/if}
-    {#if task.lease_owner}<span class="lease">⌑ {task.lease_owner}</span>{/if}
-  </div>
+  </span>
   <h3>{task.title}</h3>
   {#if task.description}<p class="task-description">{task.description}</p>{/if}
-  <div class="task-footer">
-    <span>{task.assignee ? `@${task.assignee}` : 'Unassigned'}</span>
-    {#if subtaskCount}<span>↳ {subtaskCount} subtasks</span>{/if}
-    <span>r{task.revision}</span>
-  </div>
+  {#if hasFooter}
+    <span class="task-footer">
+      {#if task.assignee}<span class="assignee">@{task.assignee}</span>{/if}
+      {#if subtaskCount}<span
+          >{subtaskCount}
+          {subtaskCount === 1 ? 'subtask' : 'subtasks'}</span
+        >{/if}
+      {#if task.lease_owner}<span class="lease" title="Claimed by {task.lease_owner}"
+          >⌑ {task.lease_owner}</span
+        >{/if}
+    </span>
+  {/if}
 </button>
 
 <style>
   .task {
     display: block;
     text-align: left;
-    padding: 16px;
+    padding: 12px;
     background: #19201b;
     border: 1px solid #303a31;
     border-radius: 8px;
     width: 100%;
     min-width: 0;
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease;
   }
-  .chosen {
+  .task:hover {
+    background: #222b23;
+    border-color: #3d4a3e;
+  }
+  .chosen,
+  .chosen:hover {
     border-color: #8aa86d;
     background: #1e291e;
     box-shadow: 0 0 0 1px #8aa86d18;
-  }
-  .task:hover {
-    background: #242e25;
-    transform: translateY(-1px);
   }
   .task-meta {
     display: flex;
     gap: 8px;
     font-size: 9px;
-    color: #94a28e;
-    margin-bottom: 11px;
+    line-height: 1.4;
+    color: #75846f;
+    margin-bottom: 4px;
     flex-wrap: wrap;
   }
-  .lease {
-    margin-left: auto;
-    color: #dac88e;
+  .key {
+    letter-spacing: 0.3px;
+  }
+  h3 {
+    overflow-wrap: anywhere;
+    line-height: 1.4;
   }
   .task-description {
     font-size: 11px;
     color: #8a988b;
-    line-height: 1.7;
-    margin-top: 7px;
+    line-height: 1.55;
+    margin-top: 4px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -88,26 +104,30 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
-  h3 {
-    overflow-wrap: anywhere;
-  }
   .task-footer {
-    border-top: 1px solid #30392f;
     display: flex;
-    gap: 8px;
-    justify-content: space-between;
-    margin-top: 17px;
-    padding-top: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    margin-top: 8px;
     font-size: 9px;
+    line-height: 1.4;
     color: #8d9d86;
   }
-  .task-footer span:last-child {
+  .assignee {
+    color: #a7b6a0;
+  }
+  .lease {
     margin-left: auto;
-    color: #64775f;
+    color: #dac88e;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   @media (min-width: 1500px) {
     .task {
-      padding: 20px;
+      padding: 14px;
     }
   }
 </style>

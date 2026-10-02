@@ -28,7 +28,6 @@
   <Brand />
   <div class="workspace-label">
     <div>Workspace</div>
-    <span class="online"></span>
   </div>
   <p class="eyebrow">WORKSPACE</p>
   <div class="nav-active"><span>▦</span> Board <span class="count">{count}</span></div>
@@ -73,13 +72,6 @@
     gap: 10px;
     margin: 40px 0 35px;
     font-size: 12px;
-  }
-  .online {
-    width: 6px;
-    height: 6px;
-    background: #b8dc90;
-    border-radius: 50%;
-    margin-left: auto;
   }
   .eyebrow {
     margin-bottom: 14px;

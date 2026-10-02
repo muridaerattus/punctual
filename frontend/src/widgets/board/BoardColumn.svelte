@@ -53,6 +53,9 @@
 <style>
   .column {
     min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
   .column-header {
     display: flex;
@@ -60,7 +63,8 @@
     gap: 9px;
     padding: 8px 0 16px;
     border-bottom: 1px solid #344034;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
   }
   h2 {
     font:
@@ -97,6 +101,18 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding: 6px 0;
+    margin: 0 -6px;
+    padding: 4px 6px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: #303b31 transparent;
+  }
+  .cards > :global(*) {
+    flex-shrink: 0;
   }
   .add-task {
     border: 1px dashed #303b31;
@@ -123,6 +139,9 @@
   @media (max-width: 760px) {
     .column {
       margin-bottom: 20px;
+    }
+    .cards {
+      overflow-y: visible;
     }
     .column-key {
       display: none;

@@ -35,12 +35,14 @@ and close with Escape.
 | R / U | Renew / release your lease |
 | X / Delete | Delete, with confirmation |
 | / | Focus search |
-| G | Refresh |
+| G | Refresh (also in the toolbar ⋯ menu) |
 | O | Focus claim identity |
 | Shift L | Sign out |
 | Ctrl/Cmd Enter | Save task in editor |
 | Escape | Close dialog / clear focused search |
 
-The board refreshes every five seconds, pausing during editing. Revision conflicts
+The board refreshes every five seconds, pausing during editing. If a refresh fails,
+a short alert keeps the last loaded tasks on screen and offers Retry; it clears after
+the next successful refresh. Revision conflicts
 preserve the open draft and show an error; close and reopen to load the new revision.
 Parent and subtask statuses are independent.

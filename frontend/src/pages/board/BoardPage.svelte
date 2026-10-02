@@ -45,7 +45,9 @@
   }
   async function focusCard() {
     await tick();
-    document.getElementById(`task-${board.selected}`)?.focus();
+    const card = document.getElementById(`task-${board.selected}`);
+    card?.focus({ preventScroll: true });
+    card?.scrollIntoView({ block: 'nearest' });
   }
   async function navigate(delta: number) {
     board.navigate(delta);
@@ -155,11 +157,23 @@
 <style>
   .workspace {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .workspace > :global(.sidebar) {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #303b31 transparent;
   }
   @media (max-width: 760px) {
     .workspace {
       display: block;
+      height: auto;
+      overflow: visible;
+    }
+    .workspace > :global(.sidebar) {
+      overflow-y: visible;
     }
   }
 </style>

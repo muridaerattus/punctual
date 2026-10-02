@@ -28,6 +28,7 @@ export class Board {
   selected = $state<number | null>(null);
   busy = $state(false);
   error = $state('');
+  refreshError = $state('');
   notice = $state('');
   filtered = $derived(
     this.tasks.filter((task) =>
@@ -40,14 +41,6 @@ export class Board {
     statuses.flatMap((status) => this.filtered.filter((task) => task.status === status)),
   );
   current = $derived(this.tasks.find((task) => task.id === this.selected));
-  completion = $derived(
-    this.tasks.length
-      ? Math.round(
-          (this.tasks.filter((task) => task.status === 'Complete').length / this.tasks.length) *
-            100,
-        )
-      : 0,
-  );
 
   private report(error: unknown) {
     this.error = error instanceof Error ? error.message : 'Request failed';
@@ -73,12 +66,21 @@ export class Board {
     if (boardId !== this.boardId) return;
     this.tasks = tasks;
     this.boards = boards;
+    this.refreshError = '';
     if (!this.tasks.some((task) => task.id === this.selected))
       this.selected = this.tasks[0]?.id ?? null;
   }
 
+  private async sync() {
+    try {
+      await this.load();
+    } catch (error) {
+      this.refreshError = error instanceof Error ? error.message : 'Request failed';
+    }
+  }
+
   refresh() {
-    return this.run(() => this.load());
+    return this.run(() => this.sync());
   }
 
   loadBoards() {
@@ -109,12 +111,8 @@ export class Board {
     });
   }
 
-  async poll() {
-    try {
-      await this.load();
-    } catch (error) {
-      this.report(error);
-    }
+  poll() {
+    return this.sync();
   }
 
   save(input: TaskInput, original?: Task) {
