@@ -17,9 +17,11 @@
 
 <main class="login">
   <Brand />
-  <h1>Sign in</h1>
+  <header>
+    <h1>Sign in</h1>
+    {#if oidc}<p>Sign in with your team account to access the shared workspace.</p>{/if}
+  </header>
   {#if oidc}
-    <p>Sign in with your team account to access the shared workspace.</p>
     <button
       class="primary"
       disabled={busy}
@@ -54,19 +56,37 @@
   .login {
     max-width: 420px;
     margin: 10vh auto;
-    padding: 24px;
+    padding: var(--space-6);
+    display: grid;
+    gap: var(--space-6);
+  }
+  header {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
   }
   h1 {
-    font-size: 44px;
-    margin: 60px 0 16px;
+    font-size: var(--text-title);
+    line-height: 1.2;
+  }
+  header p {
+    color: var(--text-secondary);
+    line-height: 1.6;
   }
   form {
-    margin: 30px 0 20px;
     display: grid;
-    gap: 20px;
+    gap: var(--space-5);
+  }
+  .primary {
+    width: 100%;
+    min-height: 44px;
+  }
+  .error {
+    margin: 0;
   }
   small {
     font-size: var(--text-xs);
+    line-height: 1.6;
   }
   @media (max-width: 760px) {
     .login {
