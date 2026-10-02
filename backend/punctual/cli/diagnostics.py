@@ -6,10 +6,7 @@ VERSION = "2026-07-28"
 TOOLS = {
     "list_boards",
     "create_board",
-    "get_task_by_key",
-    "list_tasks",
     "query_tasks",
-    "get_task",
     "create_task",
     "update_task",
     "delete_task",

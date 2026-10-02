@@ -1,4 +1,3 @@
-import re
 import time
 
 from sqlalchemy import String, func, or_, select
@@ -9,6 +8,7 @@ from ..db.session import Database
 from . import leases
 from .errors import Conflict
 from .reads import ReadWorkflows
+from .references import resolve_task
 from .schemas import BoardInput, ForceReleaseInput, TaskInput, TaskPatch
 from .writes import WriteWorkflows
 
@@ -60,29 +60,12 @@ class TaskService(ReadWorkflows, WriteWorkflows):
             return {"id": board.id, "name": board.name, "prefix": board.prefix}
 
     def get_by_key(self, key: str):
-        if not re.fullmatch(r"[A-Z]{1,8}-[1-9][0-9]*", key):
-            raise Conflict("invalid_key", "Expected a ticket key such as PUN-123", 422)
-        prefix, number = key.split("-")
         with self.database.session() as session:
-            task = (
-                session.scalar(
-                    select(Task)
-                    .join(Board)
-                    .where(Board.prefix == prefix, Task.number == int(number))
-                )
-                if len(number) <= 19 and int(number) <= 9223372036854775807
-                else None
-            )
-            if task is None:
-                raise Conflict("not_found", "Task not found", 404)
-            return public(task)
+            return public(resolve_task(session, key))
 
     @staticmethod
-    def task(session: Session, task_id: int) -> Task:
-        task = session.get(Task, task_id)
-        if task is None:
-            raise Conflict("not_found", "Task not found", 404)
-        return task
+    def task(session: Session, task_id: int | str) -> Task:
+        return resolve_task(session, task_id)
 
     @staticmethod
     def has_children(session: Session, task_id: int) -> bool:
@@ -112,7 +95,7 @@ class TaskService(ReadWorkflows, WriteWorkflows):
                 "invalid_parent", "A task with subtasks cannot become a subtask", 422
             )
 
-    def get(self, task_id: int):
+    def get(self, task_id: int | str):
         with self.database.session() as session:
             return public(self.task(session, task_id))
 
@@ -152,7 +135,7 @@ class TaskService(ReadWorkflows, WriteWorkflows):
             session.flush()
             return public(task)
 
-    def update(self, task_id: int, data: TaskPatch):
+    def update(self, task_id: int | str, data: TaskPatch):
         with self.database.session(write=True) as session:
             task = self.task(session, task_id)
             leases.guard(task, data.revision, data.lease_token)
@@ -164,7 +147,7 @@ class TaskService(ReadWorkflows, WriteWorkflows):
                     raise Conflict("invalid_field", f"{field} cannot be null", 422)
             if "parent_id" in changes:
                 self.validate_parent(
-                    session, changes["parent_id"], task.board_id, task_id
+                    session, changes["parent_id"], task.board_id, task.id
                 )
             for field, value in changes.items():
                 setattr(task, field, value)
@@ -173,16 +156,18 @@ class TaskService(ReadWorkflows, WriteWorkflows):
             session.flush()
             return public(task)
 
-    def delete(self, task_id: int, revision: int, token: str | None = None):
+    def delete(self, task_id: int | str, revision: int, token: str | None = None):
         with self.database.session(write=True) as session:
             task = self.task(session, task_id)
             leases.guard(task, revision, token)
-            if self.has_children(session, task_id):
+            if self.has_children(session, task.id):
                 raise Conflict("has_subtasks", "Delete or detach subtasks first")
             session.delete(task)
-            return {"deleted": task_id}
+            return {"deleted": task.id}
 
-    def lease(self, task_id: int, action: str, owner=None, token=None, seconds=900):
+    def lease(
+        self, task_id: int | str, action: str, owner=None, token=None, seconds=900
+    ):
         with self.database.session(write=True) as session:
             task = self.task(session, task_id)
             leases.change(task, action, owner, token, seconds)
@@ -192,7 +177,7 @@ class TaskService(ReadWorkflows, WriteWorkflows):
                 result["lease_token"] = task.lease_token
             return result
 
-    def force_release(self, task_id: int, data: ForceReleaseInput):
+    def force_release(self, task_id: int | str, data: ForceReleaseInput):
         with self.database.session(write=True) as session:
             task = self.task(session, task_id)
             if task.revision != data.revision:

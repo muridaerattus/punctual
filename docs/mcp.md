@@ -19,10 +19,8 @@ renewal, release, edit, delete, and completion accept existing legacy tokens.
 | Tool | Purpose |
 | --- | --- |
 | `list_boards`, `create_board` | Discover or create boards and immutable prefixes |
-| `get_task`, `get_task_by_key` | Full task detail, revision, and public lease metadata |
-| `list_tasks` | Bounded compact task search by numeric board ID |
 | `query_tasks` | Bounded compact search by board prefix/name, with parent and availability filters |
-| `get_task_context` | Task, board, parent, and a bounded page of subtasks |
+| `get_task_context` | Full task, board, parent, and paged subtasks by exact key or numeric ID |
 | `board_overview` | Exact status/claim counts and bounded samples, distinguishing top-level tasks and subtasks |
 | `find_available_work` | Unclaimed To Do candidates, ordered by numeric ID |
 | `start_task` | Atomically claim a task and set In Progress |
@@ -31,14 +29,17 @@ renewal, release, edit, delete, and completion accept existing legacy tokens.
 | `create_task`, `update_task`, `delete_task` | Granular creation, revision-checked edits, and deletion |
 | `claim_task`, `renew_lease`, `release_lease` | Granular claim lifecycle |
 | `force_release_lease` | Explicit override with revision, public lease ID, and recorded reason |
-| `get_lease_history` | Bounded forced-release records, including for deleted numeric task IDs |
+| `get_lease_history` | Bounded forced-release records by key or ID; use numeric IDs after deletion |
 
 Use `list_boards` to choose a board, or `create_board(board)` to create one.
-`list_tasks(board_id=...)` and `create_task(task={..., "board_id": ...})` scope work;
-omission selects board 1. New workflows accept an explicit board prefix or exact
-board name, or an exact ticket key. Duplicate board names produce structured
-candidate matches; use a unique prefix to continue. Granular mutations still take
-numeric task IDs obtained from `get_task_by_key(key)`.
+`query_tasks(board=...)` requires an explicit board prefix or exact name. Duplicate
+board names produce structured candidate matches; use a unique prefix to continue.
+`create_task(task={..., "board_id": ...})` still takes a numeric board ID, defaulting
+to board 1. `get_task_context(key=...)` accepts an exact ticket key or numeric task ID.
+Granular update, delete, claim, renew, release, and force-release tools accept either
+form in `task_id`; for example `claim_task(task_id="ENG-123", owner="agent", ...)`.
+Reference resolution and mutation occur in the same service transaction. Numeric
+IDs must be JSON integers, not numeric strings; titles are never mutation selectors.
 
 SDK client example (run in the backend environment):
 
@@ -54,7 +55,7 @@ async def main():
         headers={'Authorization': f"Bearer {os.environ['PUNCTUAL_API_KEY']}"},
     )
     async with Client(transport) as client:
-        print(await client.call_tool('list_tasks', {}))
+        print(await client.call_tool('query_tasks', {'board': 'PUN'}))
 
 asyncio.run(main())
 ```
@@ -81,17 +82,22 @@ contain no lease token. Use a new request ID for every new intended operation.
 
 Completion requires your active lease. Expired leases must be claimed again; see
 [lease recovery](api.md#recovering-a-lost-claim-response-or-token) for granular claims.
-Lease renewal still uses `renew_lease` with the numeric task ID and saved token.
+Lease renewal uses `renew_lease` with the exact key or numeric ID and saved token.
 Availability is a snapshot, not a reservation: another agent may claim a candidate
 before your start request.
 
 ### Bounded reads and migration
 
-**MCP `list_tasks` now returns a page object in `data`, rather than an array.** Read
-`data.items`, and pass `data.next_cursor` to the next call with the same filters.
+**MCP `list_tasks`, `get_task`, and `get_task_by_key` have been removed.** Replace
+listing with `query_tasks(board="PREFIX")`; replace either single-task getter with
+`get_task_context(key="PREFIX-123")` or `get_task_context(key=123)`, reading `data.task`.
+Use the board prefix returned by `list_boards` when migrating a numeric board selector.
+
+`query_tasks` returns a page in `data`. Read `data.items`, and pass `data.next_cursor`
+to the next call with the same filters.
 Pages have `truncated: true` when further matches exist; a final page has a null
 cursor. Lists default to 50 items, with a hard maximum of 100. Compact list items
-omit descriptions; use `get_task`, `get_task_by_key`, or `get_task_context` for full
+omit descriptions; use `get_task_context` for full
 detail. Existing HTTP `/api/tasks` and CLI list output retain their contracts.
 
 `get_task_context` pages its `subtasks` independently of full task/parent detail.
@@ -101,8 +107,9 @@ Task pages, context, and overviews include an `as_of` Unix timestamp used consis
 for lease activity checks. Pages fetched at different times are separate snapshots. Expired leases are
 presented as unclaimed, and general read responses never include lease tokens.
 
-`get_lease_history` accepts a numeric task ID because forced-release records survive
-deletion. It contains only explicit forced releases, not normal claim/release events
+`get_lease_history` accepts a key or numeric ID. Use a numeric ID after deletion,
+because the deleted task's key can no longer be resolved but its records survive.
+It contains only explicit forced releases, not normal claim/release events
 or a complete task timeline.
 
 ### Native behavior and scope
@@ -274,7 +281,7 @@ uv run punctual --url http://localhost:8000 --json doctor
 ```
 
 Use the base URL, without `/mcp/`. `doctor` checks health, frontend availability,
-authenticated API access, MCP discovery for `2026-07-28`, and all twenty tools.
+authenticated API access, MCP discovery for `2026-07-28`, and all seventeen tools.
 It performs no writes and prints neither keys nor task contents. Exit code is
 zero on success and one on failure. Errors distinguish connection failures,
 401 (key mismatch), 404/405 (wrong endpoint), 421 (disallowed host), unsupported

@@ -1,6 +1,5 @@
 """Bounded, read-only workflows shared by service adapters."""
 
-import re
 import time
 
 from sqlalchemy import String, case, func, or_, select
@@ -16,9 +15,9 @@ from .read_schemas import (
     TaskCounts,
     TaskPage,
 )
+from .references import MAX_ID, resolve_task, task_condition
 
 STATUSES = ("To Do", "In Progress", "Complete")
-MAX_ID = 9223372036854775807
 
 
 class AmbiguousBoard(Conflict):
@@ -196,21 +195,13 @@ class ReadWorkflows:
                 "as_of": as_of,
             }
 
-    def get_task_context(self, key: str, limit=50, cursor=None) -> TaskContext:
+    def get_task_context(self, key: int | str, limit=50, cursor=None) -> TaskContext:
         validate_page(limit, cursor)
-        if not isinstance(key, str) or not re.fullmatch(r"[A-Z]{1,8}-[1-9][0-9]*", key):
-            raise Conflict("invalid_key", "Expected a ticket key such as PUN-123", 422)
-        prefix, number = key.split("-")
-        if len(number) > 19 or int(number) > MAX_ID:
-            raise Conflict("not_found", "Task not found", 404)
+        condition = task_condition(key)
         as_of = time.time()
         with self.database.session() as session:
             task = (
-                session.execute(
-                    _projection(as_of, full=True)
-                    .where(Board.prefix == prefix, Task.number == int(number))
-                    .limit(1)
-                )
+                session.execute(_projection(as_of, full=True).where(condition).limit(1))
                 .mappings()
                 .first()
             )
@@ -233,7 +224,7 @@ class ReadWorkflows:
             )
             counts = _counts(session, condition, as_of)
             return {
-                "board": board_summary(resolve_board(session, prefix)),
+                "board": board_summary(session.get(Board, task["board_id"])),
                 "task": dict(task),
                 "parent": dict(parent) if parent is not None else None,
                 "subtasks": children["items"],
@@ -277,18 +268,20 @@ class ReadWorkflows:
         )
 
     def get_lease_history(
-        self, task_id: int, limit=50, cursor=None
+        self, task_id: int | str, limit=50, cursor=None
     ) -> LeaseHistoryPage:
         """Read durable forced-release events, even after a task is deleted."""
         validate_page(limit, cursor)
-        if type(task_id) is not int or not 1 <= task_id <= MAX_ID:
-            raise Conflict("invalid_task", "Task must be a positive row ID", 422)
-        statement = select(*LeaseRelease.__table__.columns).where(
-            LeaseRelease.task_id == task_id
-        )
-        if cursor is not None:
-            statement = statement.where(LeaseRelease.id > cursor)
         with self.database.session() as session:
+            if isinstance(task_id, str):
+                task_id = resolve_task(session, task_id).id
+            if type(task_id) is not int or not 1 <= task_id <= MAX_ID:
+                raise Conflict("invalid_task", "Task must be a positive row ID", 422)
+            statement = select(*LeaseRelease.__table__.columns).where(
+                LeaseRelease.task_id == task_id
+            )
+            if cursor is not None:
+                statement = statement.where(LeaseRelease.id > cursor)
             rows = session.execute(
                 statement.order_by(LeaseRelease.id).limit(limit + 1)
             ).mappings()

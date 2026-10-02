@@ -38,15 +38,14 @@ def test_metadata_and_schema_constraints(store):
         tools = {t.name: t for t in await client.list_tools()}
         reads = {
             "list_boards",
-            "get_task",
-            "get_task_by_key",
-            "list_tasks",
             "query_tasks",
             "get_task_context",
             "board_overview",
             "find_available_work",
             "get_lease_history",
         }
+        assert len(tools) == 17
+        assert not {"get_task", "get_task_by_key", "list_tasks"} & tools.keys()
         for name, tool in tools.items():
             annotations = tool.annotations.model_dump(by_alias=True)
             assert annotations["readOnlyHint"] is (name in reads)
@@ -57,7 +56,8 @@ def test_metadata_and_schema_constraints(store):
             assert "data" in tool.output_schema["properties"]
             assert "error" in tool.output_schema["properties"]
         claim = tools["claim_task"].input_schema["properties"]
-        assert claim["task_id"]["exclusiveMinimum"] == 0
+        assert claim["task_id"]["anyOf"][0]["exclusiveMinimum"] == 0
+        assert claim["task_id"]["anyOf"][1]["pattern"]
         assert claim["owner"]["minLength"] == 1
         assert claim["owner"]["maxLength"] == 100
         assert claim["owner"]["pattern"] == r"\S"
@@ -76,8 +76,10 @@ def test_metadata_and_schema_constraints(store):
 @pytest.mark.parametrize(
     "name,arguments",
     [
-        ("get_task", {"task_id": 0}),
-        ("get_task", {"task_id": 2**63}),
+        ("get_task_context", {"key": 0}),
+        ("get_task_context", {"key": 2**63}),
+        ("get_task_context", {"key": True}),
+        ("get_task_context", {"key": "123"}),
         ("delete_task", {"task_id": 1, "revision": 0}),
         ("claim_task", {"task_id": 1, "owner": " "}),
         ("claim_task", {"task_id": 1, "owner": "x" * 101}),
@@ -112,7 +114,7 @@ def test_read_workflows_paging_disambiguation_and_redaction(store):
     store.create_board(BoardInput(name="Duplicate", prefix="TWO"))
 
     async def scenario(client):
-        page = (await checked(client, "list_tasks", {"board_id": 1, "limit": 1}))[
+        page = (await checked(client, "query_tasks", {"board": "PUN", "limit": 1}))[
             "data"
         ]
         assert page["items"][0]["id"] == first["id"]
@@ -144,7 +146,7 @@ def test_read_workflows_paging_disambiguation_and_redaction(store):
             "ONE",
             "TWO",
         ]
-        missing = await checked(client, "list_tasks", {"board_id": 9999}, error=True)
+        missing = await checked(client, "query_tasks", {"board": "MISSING"}, error=True)
         assert missing["error"]["code"] == "not_found"
 
     run(store, scenario)
@@ -231,23 +233,29 @@ def test_atomic_and_composite_results_and_replays(store):
 
 def test_adapter_projects_private_fields_and_masks_internal_errors(store, monkeypatch):
     task = store.create(TaskInput(title="Projection"))
+    context = store.get_task_context(task["key"])
 
-    def leaky_get(task_id):
-        return {**task, "lease_token": TOKEN, "request_id": REQUEST}
+    def leaky_get(key, **kwargs):
+        return {
+            **context,
+            "task": {**task, "lease_token": TOKEN, "request_id": REQUEST},
+        }
 
-    monkeypatch.setattr(store, "get", leaky_get)
+    monkeypatch.setattr(store, "get_task_context", leaky_get)
 
     async def scenario(client):
-        public = await checked(client, "get_task", {"task_id": task["id"]})
+        public = await checked(client, "get_task_context", {"key": task["id"]})
         assert TOKEN not in json.dumps(public)
         assert REQUEST not in json.dumps(public)
-        assert "lease_token" not in public["data"]
+        assert "lease_token" not in public["data"]["task"]
 
-        def broken_get(task_id):
+        def broken_get(key, **kwargs):
             raise RuntimeError(f"Database secret: {TOKEN}")
 
-        monkeypatch.setattr(store, "get", broken_get)
-        failed = await checked(client, "get_task", {"task_id": task["id"]}, error=True)
+        monkeypatch.setattr(store, "get_task_context", broken_get)
+        failed = await checked(
+            client, "get_task_context", {"key": task["id"]}, error=True
+        )
         assert failed == {
             "ok": False,
             "error": {"code": "internal_error", "message": "Tool execution failed"},
@@ -257,8 +265,10 @@ def test_adapter_projects_private_fields_and_masks_internal_errors(store, monkey
 
 
 @pytest.mark.parametrize("action", ["renew", "release", "update", "delete", "complete"])
-def test_mcp_accepts_existing_legacy_lease_tokens(store, action):
+@pytest.mark.parametrize("by_key", [False, True])
+def test_mcp_accepts_existing_legacy_lease_tokens(store, action, by_key):
     task = store.create(TaskInput(title="Legacy claim"))
+    reference = task["key"] if by_key else task["id"]
     store.lease(task["id"], "claim", owner="legacy-owner")
     with store.database.session(write=True) as session:
         session.get(TaskRecord, task["id"]).lease_token = "old-token"
@@ -277,7 +287,7 @@ def test_mcp_accepts_existing_legacy_lease_tokens(store, action):
         elif action == "update":
             name = "update_task"
             arguments = {
-                "task_id": task["id"],
+                "task_id": reference,
                 "changes": {
                     "revision": 1,
                     "lease_token": "old-token",
@@ -290,10 +300,63 @@ def test_mcp_accepts_existing_legacy_lease_tokens(store, action):
                 "release": "release_lease",
                 "delete": "delete_task",
             }[action]
-            arguments = {"task_id": task["id"], "lease_token": "old-token"}
+            arguments = {"task_id": reference, "lease_token": "old-token"}
             if action == "delete":
                 arguments["revision"] = 1
         result = await checked(client, name, arguments)
         assert result["ok"] is True
+
+    run(store, scenario)
+
+
+def test_direct_key_claim_recovery_and_history(store):
+    unrelated = store.create(TaskInput(title="Default board"))
+    board = store.create_board(BoardInput(name="Engineering", prefix="ENG"))
+    task = store.create(TaskInput(title="Engineering task", board_id=board["id"]))
+    assert task["id"] != task["number"]
+
+    async def scenario(client):
+        arguments = {"task_id": task["key"], "owner": "agent", "lease_token": TOKEN}
+        claimed = (await checked(client, "claim_task", arguments))["data"]
+        recovered = (await checked(client, "claim_task", arguments))["data"]
+        assert recovered == claimed
+        assert store.get(unrelated["id"])["lease_owner"] is None
+        assert claimed["status"] == "To Do"
+        released = await checked(
+            client,
+            "force_release_lease",
+            {
+                "task_id": task["key"],
+                "release": {
+                    "revision": 1,
+                    "lease_id": claimed["lease_id"],
+                    "reason": "Recovery",
+                },
+            },
+        )
+        assert released["data"]["lease_owner"] is None
+        history = (
+            await checked(client, "get_lease_history", {"task_id": task["key"]})
+        )["data"]
+        assert history["items"][0]["task_id"] == task["id"]
+        await checked(client, "delete_task", {"task_id": task["key"], "revision": 1})
+        retained = (
+            await checked(client, "get_lease_history", {"task_id": task["id"]})
+        )["data"]
+        assert retained == history
+        missing = await checked(
+            client, "get_lease_history", {"task_id": task["key"]}, error=True
+        )
+        assert missing["error"]["code"] == "not_found"
+
+    run(store, scenario)
+
+
+@pytest.mark.parametrize("name", ["list_tasks", "get_task", "get_task_by_key"])
+def test_removed_tools_are_not_callable(store, name):
+    async def scenario(client):
+        response = await client.call_tool(name, {}, raise_on_error=False)
+        assert response.is_error
+        assert response.structured_content["error"]["code"] == "not_found"
 
     run(store, scenario)

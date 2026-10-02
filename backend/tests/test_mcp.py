@@ -32,10 +32,7 @@ def test_stateless_mcp_and_shared_locking(client, auth):
     assert names == {
         "list_boards",
         "create_board",
-        "get_task_by_key",
-        "list_tasks",
         "query_tasks",
-        "get_task",
         "create_task",
         "update_task",
         "delete_task",
@@ -65,12 +62,13 @@ def test_stateless_mcp_and_shared_locking(client, auth):
         "create_task", {"task": {"title": "Other board", "board_id": board["id"]}}
     )["data"]
     assert other["key"] == "ENG-1"
-    assert call("list_tasks", {})["data"]["items"] == []
-    listed = call("list_tasks", {"board_id": board["id"]})["data"]["items"]
+    assert call("query_tasks", {"board": "PUN"})["data"]["items"] == []
+    listed = call("query_tasks", {"board": board["prefix"]})["data"]["items"]
     assert len(listed) == 1
     assert listed[0]["key"] == other["key"]
     assert "description" not in listed[0]
-    assert call("get_task_by_key", {"key": "ENG-1"})["data"] == other
+    assert call("get_task_context", {"key": "ENG-1"})["data"]["task"] == other
+    assert call("get_task_context", {"key": other["id"]})["data"]["task"] == other
     created = rpc(
         "tools/call",
         {

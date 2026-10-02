@@ -7,15 +7,13 @@ Request IDs are global across operations and must not be reused for new work.
 
 import hashlib
 import json
-import re
 import time
 
-from sqlalchemy import select
-
 from ..db.idempotency_models import IdempotencyReceipt
-from ..db.models import Board, Task
+from ..db.models import Task
 from . import leases
 from .errors import Conflict
+from .references import resolve_task
 from .write_schemas import CompleteTaskInput, StartTaskInput, TaskTreeInput
 
 
@@ -62,24 +60,6 @@ def record(session, request_id, operation, digest, result):
     return {**result, "replayed": False}
 
 
-def task_by_key(session, key):
-    if not re.fullmatch(r"[A-Z]{1,8}-[1-9][0-9]*", key):
-        raise Conflict("invalid_key", "Expected a ticket key such as PUN-123", 422)
-    prefix, number = key.split("-")
-    task = (
-        session.scalar(
-            select(Task)
-            .join(Board)
-            .where(Board.prefix == prefix, Task.number == int(number))
-        )
-        if len(number) <= 19 and int(number) <= 9223372036854775807
-        else None
-    )
-    if task is None:
-        raise Conflict("not_found", "Task not found", 404)
-    return task
-
-
 class WriteWorkflows:
     def start_task(self, key: str, data: StartTaskInput):
         """Claim and start; preserve assignment unless supplied, reject Complete."""
@@ -91,7 +71,7 @@ class WriteWorkflows:
             previous = replay(session, data.request_id, operation, digest)
             if previous is not None:
                 return previous
-            task = task_by_key(session, key)
+            task = resolve_task(session, key)
             leases.guard(task, data.revision, data.lease_token)
             if task.status == "Complete":
                 raise Conflict(
@@ -118,7 +98,7 @@ class WriteWorkflows:
             previous = replay(session, data.request_id, operation, digest)
             if previous is not None:
                 return previous
-            task = task_by_key(session, key)
+            task = resolve_task(session, key)
             leases.guard(task, data.revision, data.lease_token)
             leases.change(task, "release", None, data.lease_token, 900)
             task.status = "Complete"

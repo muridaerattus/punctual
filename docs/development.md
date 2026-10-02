@@ -142,6 +142,8 @@ to `TaskService`. Both adapters call these methods directly rather than composin
 separate transactions. MCP result/schema helpers centralize discovery metadata and
 error envelopes. Read aggregation uses bounded SQL queries and one database
 snapshot, rather than parallel requests against the same local database.
+`tasks/references.py` resolves exact ticket keys and numeric IDs within those same
+transactions, so key-aware MCP mutations retain the shared revision/lease guards.
 
 ## Database development
 
