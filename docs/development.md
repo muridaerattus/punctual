@@ -56,12 +56,12 @@ assets are minified by Vite at build time.
 
 The frontend uses Feature-Sliced Design (FSD). Dependencies flow
 downward: **app → pages → widgets → features → entities → shared**. Slices on the
-same layer remain independent. Components own their styles; shared styles contain
-typography and reusable controls.
+same layer remain independent. Components own their layout; shared styles contain
+design tokens, typography, and reusable controls.
 
 ```text
 frontend/src/
-├── app/                     # Composition, authentication lifecycle, shared styles
+├── app/                     # Composition, authentication lifecycle, style entry point
 ├── pages/board/             # Board workflows, dialogs, shortcut registry
 ├── widgets/
 │   ├── board/               # Board state, columns, toolbar, task actions, footer
@@ -77,6 +77,7 @@ frontend/src/
 ├── shared/
 │   ├── api/                 # Generic authenticated HTTP client
 │   ├── keyboard/            # Shortcut event handling
+│   ├── styles/              # Semantic design tokens and shared control styles
 │   └── ui/                  # Brand, modal, shortcut reference dialog
 └── main.ts
 ```
@@ -88,6 +89,32 @@ composes them, using numeric board IDs to scope task requests. The board has no
 dependency on login/session state. `BoardPage.svelte`
 coordinates task dialogs and polling. Shortcut bindings and displayed descriptions
 share `pages/board/shortcuts.ts` so the help reference stays aligned with actions.
+
+#### Design foundations
+
+The visual system is centralized in `frontend/src/shared/styles/`:
+
+- `tokens.css` owns semantic colors, surface levels, fonts, type sizes, spacing,
+  control heights, radii, shadows, and motion settings. Change these tokens to
+  tune the design across the application.
+- `base.css` owns global typography, native form controls, focus indicators, and
+  reusable classes such as `.primary`, `.quiet`, `.error`, and `.dialog-actions`.
+- `app/styles.css` imports both once, through `main.ts`. Shared styles never import
+  from higher FSD layers. Reusable interactive components live in `shared/ui/`.
+
+Use semantic tokens in component styles (`var(--surface-card)`,
+`var(--text-secondary)`, `var(--space-3)`) rather than introducing local palettes.
+Keep component-specific dimensions, grids, and responsive layout in the owning
+slice. Default controls use `--control-height`; explicitly compact controls may
+use `--control-height-compact`.
+
+The design uses clear surface hierarchy, compact controls, and purposeful motion,
+implemented with Svelte and CSS.
+Hover is a preview; selected tasks retain their inset marker and keyboard focus
+uses a separate outline. Never delay focus or selection for an animation. Motion
+uses the shared timing tokens, which become zero under reduced-motion preferences;
+dialog entrance animation is enabled only when motion is allowed. Native modal
+focus handling and keyboard shortcuts remain part of component behavior.
 
 ### Backend
 

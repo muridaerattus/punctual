@@ -24,12 +24,12 @@
     pointer-events: none;
   }
   .toast {
-    background: #2a352c;
-    border: 1px solid #5a7246;
-    border-radius: 6px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-selected);
+    border-radius: var(--radius-control);
     padding: 9px 14px;
     font-size: 11px;
-    color: #dce8d4;
+    color: var(--text-primary);
     white-space: nowrap;
     box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
     animation: toast-in 140ms ease-out;

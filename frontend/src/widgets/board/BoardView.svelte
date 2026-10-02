@@ -100,7 +100,7 @@
     white-space: nowrap;
   }
   .workspace {
-    color: #7e8c81;
+    color: var(--text-muted);
     font-weight: 400;
   }
   .refresh-error {
@@ -109,7 +109,7 @@
     gap: 6px;
     margin-top: 10px;
     font-size: 10px;
-    color: #d8b07a;
+    color: var(--warning);
   }
   .refresh-error button {
     padding: 0;

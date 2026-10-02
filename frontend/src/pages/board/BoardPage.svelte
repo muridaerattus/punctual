@@ -164,7 +164,7 @@
   .workspace > :global(.sidebar) {
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: #303b31 transparent;
+    scrollbar-color: var(--border-default) transparent;
   }
   @media (max-width: 760px) {
     .workspace {

@@ -19,7 +19,7 @@
     padding: 4px 0;
     font-size: 10px;
     line-height: 1;
-    color: #7f927a;
+    color: var(--text-muted);
     white-space: nowrap;
   }
   kbd {
@@ -27,7 +27,7 @@
     padding: 1px 4px;
   }
   .divider {
-    color: #455641;
+    color: var(--text-muted);
   }
   button {
     border: 0;

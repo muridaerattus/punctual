@@ -62,7 +62,7 @@
     align-items: center;
     gap: 9px;
     padding: 8px 0 16px;
-    border-bottom: 1px solid #344034;
+    border-bottom: 1px solid var(--border-default);
     margin-bottom: 10px;
     flex-shrink: 0;
   }
@@ -76,16 +76,16 @@
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    border: 1px solid #92a28f;
+    border: 1px solid var(--text-muted);
   }
   .dot-1 {
-    background: #cbb273;
-    border-color: #cbb273;
-    box-shadow: inset 3px 0 #101414;
+    background: var(--warning);
+    border-color: var(--warning);
+    box-shadow: inset 3px 0 var(--surface-canvas);
   }
   .dot-2 {
-    background: #bce194;
-    border-color: #bce194;
+    background: var(--accent);
+    border-color: var(--accent);
   }
   .column-key {
     margin-left: auto;
@@ -94,7 +94,7 @@
     background: transparent;
     border: 0;
     padding: 0 3px;
-    color: #91a18f;
+    color: var(--text-muted);
     font-size: 18px;
   }
   .cards {
@@ -109,25 +109,25 @@
     margin: 0 -6px;
     padding: 4px 6px 12px;
     scrollbar-width: thin;
-    scrollbar-color: #303b31 transparent;
+    scrollbar-color: var(--border-default) transparent;
   }
   .cards > :global(*) {
     flex-shrink: 0;
   }
   .add-task {
-    border: 1px dashed #303b31;
+    border: 1px dashed var(--border-default);
     background: transparent;
     text-align: left;
-    color: #7a8c79;
+    color: var(--text-muted);
     font-size: 11px;
     padding: 12px;
   }
   .empty {
-    border: 1px dashed #2c382e;
-    border-radius: 7px;
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-control);
     padding: 38px 8px;
     text-align: center;
-    color: #62745f;
+    color: var(--text-muted);
     font-size: 10px;
   }
   .empty > span {

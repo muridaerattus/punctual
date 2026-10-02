@@ -99,7 +99,7 @@
     padding: 5px 9px;
     line-height: 1;
     font-size: 15px;
-    color: #9faa9f;
+    color: var(--text-secondary);
   }
   .menu {
     position: absolute;
@@ -109,10 +109,10 @@
     display: flex;
     flex-direction: column;
     padding: 5px;
-    background: #171e18;
-    border: 1px solid #344034;
-    border-radius: 7px;
-    box-shadow: 0 12px 30px #0b0e0d;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-control);
+    box-shadow: var(--shadow-popover);
   }
   .down {
     top: calc(100% + 6px);
@@ -133,7 +133,7 @@
   }
   [role='menuitem']:hover,
   [role='menuitem']:focus-visible {
-    background: #252f26;
+    background: var(--surface-hover);
     outline: none;
   }
 </style>

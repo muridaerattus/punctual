@@ -1,0 +1,203 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+/* Shared typography and controls. Component-specific layout stays in its FSD slice. */
+:root {
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--surface-canvas);
+  font-synthesis: none;
+  font-weight: 400;
+  color-scheme: dark;
+  font-size: var(--text-base);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: inherit;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+input,
+textarea,
+select {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
+  color: var(--text-primary);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+  outline: none;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--focus-ring);
+  box-shadow: var(--focus-shadow);
+}
+textarea {
+  resize: vertical;
+}
+label {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+label input,
+label select,
+label textarea {
+  margin-top: var(--space-2);
+}
+kbd {
+  font: 10px var(--font-body);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 2px 5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+h1,
+h2 {
+  font-family: var(--font-heading);
+}
+h1 {
+  font-size: var(--text-title);
+  letter-spacing: -1.7px;
+  font-weight: 500;
+}
+h2 {
+  font-size: var(--text-heading);
+  letter-spacing: -0.5px;
+}
+h3 {
+  font-size: var(--text-base);
+  font-weight: 550;
+  line-height: 1.55;
+}
+.muted {
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+.accent {
+  color: var(--accent);
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-4);
+}
+.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.primary kbd {
+  color: var(--on-accent-muted);
+  border-color: var(--border-on-accent);
+}
+.quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+.count {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+}
+.danger {
+  color: var(--danger);
+}
+.error {
+  background: var(--surface-danger);
+  border: 1px solid var(--border-danger);
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--danger);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  margin: 12px 0;
+}
+.error button {
+  font-size: 11px;
+  margin-left: 8px;
+}
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+@media (max-width: 760px) {
+  .primary {
+    gap: 8px;
+    padding: 10px;
+  }
+}

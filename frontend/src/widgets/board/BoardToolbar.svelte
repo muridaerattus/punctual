@@ -43,8 +43,8 @@
     align-items: center;
     gap: 16px;
     padding: 13px 0;
-    border-top: 1px solid #28312a;
-    border-bottom: 1px solid #28312a;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
   }
   .search {
     display: flex;

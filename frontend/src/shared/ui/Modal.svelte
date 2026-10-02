@@ -13,16 +13,31 @@
 <style>
   dialog {
     width: min(580px, calc(100vw - 32px));
-    border: 1px solid #47513f;
-    background: #19201b;
-    border-radius: 12px;
-    color: #e3e7e4;
-    padding: 28px;
-    box-shadow: 0 30px 100px #0008;
+    border: 1px solid var(--border-default);
+    background: var(--surface-raised);
+    border-radius: var(--radius-dialog);
+    color: var(--text-primary);
+    padding: var(--space-7);
+    box-shadow: var(--shadow-dialog);
     max-height: 90vh;
   }
   dialog::backdrop {
-    background: #050c08b5;
+    background: var(--overlay);
     backdrop-filter: blur(4px);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    dialog[open] {
+      animation: dialog-enter var(--motion-moderate) var(--motion-ease);
+    }
+    @keyframes dialog-enter {
+      from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.99);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
   }
 </style>

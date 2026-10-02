@@ -11,19 +11,19 @@
       600 24px 'Space Grotesk',
       sans-serif;
     text-decoration: none;
-    color: #e9eee5;
+    color: var(--text-primary);
     letter-spacing: -1px;
   }
   .logo {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #c0e896;
-    color: #152217;
+    background: var(--accent);
+    color: var(--on-accent);
     width: 27px;
     height: 27px;
     font-size: 44px;
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     line-height: 0;
     padding-bottom: 6px;
   }

@@ -79,9 +79,9 @@
     gap: 12px;
     min-height: 44px;
     padding: 5px 6px 5px 12px;
-    background: #171e18;
-    border: 1px solid #303c30;
-    border-radius: 7px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
     min-width: 0;
   }
   .selected {
@@ -95,11 +95,11 @@
   }
   .key {
     flex: none;
-    color: #b2c9a1;
+    color: var(--text-selected);
     font-size: 10px;
   }
   .title {
-    color: #c3cec5;
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -130,7 +130,7 @@
   }
   .lease {
     font-size: 10px;
-    color: #8d9e90;
+    color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -138,7 +138,7 @@
     padding: 0 4px;
   }
   .lease strong {
-    color: #b2c9a1;
+    color: var(--text-selected);
     font-weight: 400;
   }
   @media (max-width: 1100px) {
@@ -152,7 +152,7 @@
       bottom: 0;
       flex-wrap: wrap;
       gap: 6px;
-      box-shadow: 0 -10px 30px #101414;
+      box-shadow: var(--shadow-popover);
     }
     .selected {
       flex-basis: 100%;

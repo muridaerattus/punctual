@@ -107,17 +107,22 @@
 <style>
   form {
     display: grid;
-    gap: 18px;
+    gap: var(--space-5);
   }
   .eyebrow {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-2);
   }
   .quiet {
-    font-size: 11px;
+    font-size: var(--text-xs);
   }
   .form-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+  @media (max-width: 480px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

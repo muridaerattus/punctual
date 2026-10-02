@@ -55,33 +55,35 @@
   .task {
     display: block;
     text-align: left;
-    padding: 12px;
-    background: #19201b;
-    border: 1px solid #303a31;
-    border-radius: 8px;
+    padding: var(--space-3);
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
     width: 100%;
     min-width: 0;
     transition:
-      background-color 0.12s ease,
-      border-color 0.12s ease;
+      background-color var(--motion-fast) var(--motion-ease),
+      border-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease);
   }
   .task:hover {
-    background: #222b23;
-    border-color: #3d4a3e;
+    background: var(--surface-hover);
+    border-color: var(--border-hover);
   }
   .chosen,
   .chosen:hover {
-    border-color: #8aa86d;
-    background: #1e291e;
-    box-shadow: 0 0 0 1px #8aa86d18;
+    border-color: var(--border-selected);
+    background: var(--surface-selected);
+    box-shadow: var(--shadow-selected);
   }
   .task-meta {
     display: flex;
-    gap: 8px;
-    font-size: 9px;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
     line-height: 1.4;
-    color: #75846f;
-    margin-bottom: 4px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-1);
     flex-wrap: wrap;
   }
   .key {
@@ -92,10 +94,10 @@
     line-height: 1.4;
   }
   .task-description {
-    font-size: 11px;
-    color: #8a988b;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
     line-height: 1.55;
-    margin-top: 4px;
+    margin-top: var(--space-1);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -108,18 +110,18 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px 10px;
-    margin-top: 8px;
-    font-size: 9px;
+    gap: var(--space-1) var(--space-3);
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
     line-height: 1.4;
-    color: #8d9d86;
+    color: var(--text-muted);
   }
   .assignee {
-    color: #a7b6a0;
+    color: var(--text-secondary);
   }
   .lease {
     margin-left: auto;
-    color: #dac88e;
+    color: var(--warning);
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;

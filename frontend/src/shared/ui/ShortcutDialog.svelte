@@ -33,9 +33,9 @@
     display: flex;
     justify-content: space-between;
     gap: 15px;
-    border-bottom: 1px solid #303b31;
+    border-bottom: 1px solid var(--border-subtle);
     padding: 10px 0;
     font-size: 12px;
-    color: #a7b4a3;
+    color: var(--text-secondary);
   }
 </style>

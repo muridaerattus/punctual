@@ -54,15 +54,15 @@
 
 <style>
   .board-picker {
-    margin-top: 16px;
+    margin-top: var(--space-4);
     min-width: 0;
   }
   .sidebar {
     width: 230px;
     flex-shrink: 0;
-    background: #131816;
-    border-right: 1px solid #28312b;
-    padding: 32px 22px;
+    background: var(--surface-sidebar);
+    border-right: 1px solid var(--border-subtle);
+    padding: var(--space-8) var(--space-5);
     display: flex;
     flex-direction: column;
   }
@@ -71,20 +71,21 @@
     align-items: center;
     gap: 10px;
     margin: 40px 0 35px;
-    font-size: 12px;
+    font-size: var(--text-sm);
   }
   .eyebrow {
     margin-bottom: 14px;
-    font-size: 9px;
+    font-size: var(--text-xs);
   }
   .nav-active {
     display: flex;
     align-items: center;
-    gap: 12px;
-    background: #283321;
-    color: #d4e9bf;
-    padding: 11px 12px;
-    border-radius: 6px;
+    gap: var(--space-3);
+    background: var(--surface-selected);
+    color: var(--text-selected);
+    padding: var(--space-3);
+    border-radius: var(--radius-control);
+    box-shadow: var(--shadow-selected);
   }
   .count {
     margin-left: auto;
@@ -94,43 +95,44 @@
     padding-top: 80px;
   }
   input {
-    font-size: 12px;
-    margin: 8px 0 20px;
+    font-size: var(--text-sm);
+    margin: var(--space-2) 0 var(--space-5);
   }
   .quiet {
     width: 100%;
     display: flex;
     justify-content: space-between;
-    padding: 9px 0;
-    font-size: 11px;
+    align-items: center;
+    padding: var(--space-2);
+    font-size: var(--text-xs);
   }
   .version {
-    border-top: 1px solid #2a322c;
-    margin-top: 24px;
-    padding-top: 20px;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: var(--space-6);
+    padding-top: var(--space-5);
     font-size: 8px;
     letter-spacing: 1px;
-    color: #758172;
+    color: var(--text-muted);
   }
   .version span {
     float: right;
-    color: #4e5d52;
+    color: var(--text-muted);
   }
   @media (max-width: 1100px) {
     .sidebar {
       width: 185px;
-      padding: 28px 15px;
+      padding: var(--space-7) var(--space-4);
     }
   }
   @media (max-width: 760px) {
     .sidebar {
       width: 100%;
-      padding: 16px 20px;
+      padding: var(--space-4) var(--space-5);
       flex-direction: row;
       align-items: center;
       flex-wrap: wrap;
-      gap: 16px;
-      border-bottom: 1px solid #28312a;
+      gap: var(--space-4);
+      border-bottom: 1px solid var(--border-subtle);
     }
     .eyebrow,
     .workspace-label,
